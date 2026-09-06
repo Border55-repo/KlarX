@@ -183,7 +183,7 @@ function kforView() {
     <p class="lead">Tren på beslutninger, samarbeid og rekkefølge i korte økter. Velg det som passer gruppen.</p>
     <section class="course-grid" aria-label="KFØR-aktiviteter">
       <a class="course-card sprint" href="#kfor-game"><span>⚡</span><strong>Scenario-sprint</strong><p>Fem situasjoner. Velg raskt og få forklaring.</p></a>
-      <a class="course-card sequence" href="#sequence"><span>↕</span><strong>Rekkefølgejakten</strong><p>Trykk XABCDE i riktig rekkefølge.</p></a>
+      <a class="course-card sequence" href="#sequence"><span>↕</span><strong>Rekkefølgejakten</strong><p>Finn hele undersøkelseskjeden uten hint.</p></a>
       <a class="course-card instructor" href="#instructor"><span>◉</span><strong>Instruktørmodus</strong><p>Gruppeoppgaver og en enkel 90-sekunders timer.</p></a>
     </section>
     <div class="section-head"><h2>12 korte temaer</h2><span class="tiny">Trykk for å åpne</span></div>
