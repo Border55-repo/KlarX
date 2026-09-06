@@ -2,7 +2,7 @@
   "name": "xabcde-trener",
   "displayName": "KlarX – førstehjelpstrener",
   "target": "web",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "dataPolicy": "local-first",
   "releaseNotifications": true,
   "autoRefreshSeconds": 15

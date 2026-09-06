@@ -1,4 +1,4 @@
-export const EMPTY_PROGRESS = Object.freeze({ learned: [], best: 0, streak: 0, lastDay: "" });
+export const EMPTY_PROGRESS = Object.freeze({ learned: [], best: 0, kforBest: 0, streak: 0, lastDay: "" });
 
 export function createProgressStore(storage, key = "klarx-progress-v1") {
   return {
