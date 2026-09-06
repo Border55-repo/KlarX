@@ -39,12 +39,76 @@ const questions = [
   { q: "Hva gjør du ved pustebesvær hos en bevisst person?", options: ["Beroliger og vurderer sittende stilling", "Legger alltid flatt", "Starter HLR", "Gir bukstøt uten å undersøke"], answer: 0, why: "Under B: berolige, tell pust, undersøk brystkassen og vurder sittende stilling." }
 ];
 
+const kforModules = [
+  { code: "01", title: "Klar for oppdrag", cue: "Kritisk eller ikke-kritisk?", points: ["KFØR kombinerer e-læring, teori og praktiske øvelser.", "Målet er å undersøke systematisk, varsle riktig og bruke relevant utstyr.", "Ferdighetene må trenes praktisk – appen er teoristøtte."] },
+  { code: "02", title: "Varsling og ansvar", cue: "Rett hjelp til rett tid", points: ["Ring 1-1-3 ved kritisk sykdom/skade eller tvil om alvorlighetsgrad.", "Oppgi nøyaktig sted tidlig og bruk gjerne høyttaler.", "Ikke lagre identifiserende pasientopplysninger. Ikke tilby medisiner fra egen lomme."] },
+  { code: "03", title: "Egensikkerhet", cue: "Du må være trygg for å hjelpe", points: ["Stopp, ro ned pusten og les skadestedet før du går inn.", "Fjern farer, forebygg nye ulykker og gjør deg synlig.", "Bruk hansker ved blod og unngå kontakt med ukjente stoffer."] },
+  { code: "04", title: "Pasientundersøkelse", cue: "XABCDE – finn, tiltak, start igjen", points: ["Gjør tiltak med én gang når du finner et problem.", "Etter tiltak starter du på A igjen og vurderer på nytt.", "Undersøkelsen er et øyeblikksbilde og må gjentas."] },
+  { code: "05", title: "A – Luftvei", cue: "Fri luftvei er først", points: ["Bøy hodet forsiktig bakover og løft eller trekk kjeven frem.", "Voksen som ikke kan hoste eller puste: veksle fem ryggslag og fem bukstøt.", "Spebarn skal ikke ha bukstøt – bruk fem ryggslag og fem brystkompresjoner."] },
+  { code: "06", title: "B – Pust", cue: "Gjenkjenn, ikke diagnostiser", points: ["Se etter lyd, frekvens, dybde, hjelpemuskler og cyanose.", "Ved pustebesvær: varsle, finn best mulig stilling og berolige.", "Agonale gisp er ikke normal pust."] },
+  { code: "07", title: "C – Sirkulasjon", cue: "Blek, kald, klam", points: ["Se etter økende pust/puls, svak puls og endret atferd.", "Stans ytre blødning med direkte trykk og trykkbandasje.", "Hold varm, la pasienten være i ro og formidle funn."] },
+  { code: "08", title: "HLR og hjertestarter", cue: "Varsle – HLR – AED", points: ["Bevisstløs og ikke normal pust: ring 1-1-3 og start HLR 30:2.", "Tilstreb 100–120 brystkompresjoner per minutt.", "Slå på hjertestarteren og følg beskjedene. Ingen må berøre under analyse eller støt."] },
+  { code: "09", title: "D – Bevissthet", cue: "ACVPU og FAST", points: ["ACVPU skiller våken, forvirret, reaksjon på tale/smerte og ingen reaksjon.", "Ved kramper: beskytt, ta tiden, ikke hold fast og ikke legg noe i munnen.", "Nyoppståtte nevrologiske symptomer eller utslag på FAST: ring 1-1-3."] },
+  { code: "10", title: "E – Topp til tå", cue: "Se hele personen", points: ["Undersøk videre etter ABCD og vurder skademekanisme og omgivelser.", "Brudd støttes i stillingen det ligger; ikke forsøk å sette det på plass.", "Brannskade kjøles med rennende lunkent vann i 20 minutter, mens resten av pasienten holdes varm."] },
+  { code: "11", title: "Temperatur og forgiftning", cue: "Beskytt – identifiser – varsle", points: ["Ved nedkjøling: isoler fra bakken, legg på varme og beskytt mot vind og vann.", "Ikke gni frostskader eller la pasienten gå på forfrosne føtter.", "Ved forgiftning: finn stoff, mengde og tidspunkt. Ikke fremkall brekninger. Ring Giftinformasjonen eller 1-1-3 ved symptomer."] },
+  { code: "12", title: "Psykososial førstehjelp", cue: "Vær – lytt – aksepter – gi", points: ["Vær nærværende.", "Lytt oppmerksomt og aksepter ulike reaksjoner.", "Gi omsorg og praktisk hjelp – og bruk ettersamtale for å ivareta hjelperen."] }
+];
+
+const kforQuestions = [
+  { q: "Du ringer 1-1-3 fra et uoversiktlig skadested. Hva bør sies tidlig?", options: ["Nøyaktig lokasjon", "Navnet på alle tilskuere", "Hvilket kurs du har", "Hvor lenge vakten varer"], answer: 0, why: "AMK trenger en entydig lokasjon tidlig hvis samtalen blir brutt." },
+  { q: "Hva kan stå på et observasjonsskjema fra et frivillig førstehjelpsoppdrag?", options: ["Fødselsnummer", "Full adresse", "Funn og utførte tiltak uten identifiserende opplysninger", "Bilde av pasienten"], answer: 2, why: "Heftet sier at funn og tiltak kan noteres, men ikke opplysninger som identifiserer pasienten." },
+  { q: "En voksen er våken, men klarer ikke å hoste eller puste. Hva er riktig?", options: ["Fem ryggslag og fem bukstøt vekselvis", "Gi vann", "Legg flatt og vent", "Bare be personen hoste"], answer: 0, why: "Ved alvorlig luftveisstans hos våken voksen veksles fem ryggslag og fem bukstøt." },
+  { q: "Hva skal du IKKE gjøre på et våkent spebarn med fremmedlegeme?", options: ["Fem ryggslag", "Fem brystkompresjoner", "Bukstøt", "Se etter fremmedlegemet mellom seriene"], answer: 2, why: "Spebarn skal ikke utsettes for bukstøt." },
+  { q: "Du har nettopp gjort et livreddende tiltak under A. Hva nå?", options: ["Gå rett til E", "Start vurderingen på A igjen", "Avslutt undersøkelsen", "Vent til ambulansen kommer"], answer: 1, why: "Etter tiltak går du tilbake til A og vurderer på nytt." },
+  { q: "En bevisstløs person gisper uregelmessig. Hvordan vurderes det?", options: ["Som normal pust", "Som søvn", "Som unormal pust – varsle og start HLR", "Som hyperventilering"], answer: 2, why: "Agonale gisp er ikke normal pust og må ikke forsinke HLR." },
+  { q: "Hva er riktig kompresjonstakt ved HLR ifølge heftet?", options: ["40–60/min", "60–80/min", "100–120/min", "140–160/min"], answer: 2, why: "KFØR-heftet oppgir 100–120 brystkompresjoner per minutt." },
+  { q: "Hjertestarteren analyserer. Hva gjør laget?", options: ["Fortsetter kompresjoner", "Sørger for at ingen berører pasienten", "Tar av elektrodene", "Flytter pasienten"], answer: 1, why: "Ingen skal berøre pasienten mens hjertestarteren analyserer eller ved støt." },
+  { q: "En person får et krampeanfall. Hva er riktig tiltak?", options: ["Hold personen fast", "Legg noe mellom tennene", "Beskytt mot skade og ta tiden", "Gi drikke"], answer: 2, why: "Beskytt personen, ta tiden og ikke hold fast eller legg noe i munnen." },
+  { q: "FAST-symptomet forsvant etter to minutter. Hva gjør du?", options: ["Venter til i morgen", "Ringer 1-1-3 likevel", "Gir mat", "Lar personen kjøre hjem"], answer: 1, why: "Forbigående symptomer kan være TIA. Ikke vent på at symptomene skal komme tilbake." },
+  { q: "En gjenstand står fast i et stikksår. Hva gjør du?", options: ["Trekker den raskt ut", "Lar den stå og stabiliserer rundt", "Vrenger den løs", "Skyver den lenger inn"], answer: 1, why: "Ikke fjern fremmedlegemet; det kan begrense blødning. Stabiliser det." },
+  { q: "Hvordan kjøles en brannskade?", options: ["Is direkte på huden", "Kaldt vann i fem minutter", "Rennende lunkent vann i 20 minutter", "Kun tørr bandasje"], answer: 2, why: "Bruk rennende lunkent vann, omtrent 20 grader, i 20 minutter. Hold resten av pasienten varm." },
+  { q: "Hva gjør du med fastbrente klær?", options: ["River dem av", "Lar dem sitte", "Klipper gjennom huden", "Gnir dem løs"], answer: 1, why: "Fastbrente klær skal ikke fjernes fra pasienten." },
+  { q: "Hva er førstevalg ved større ytre blødning på KFØR-nivå?", options: ["Direkte trykk og trykkbandasje", "Kun is", "Fjerne første bandasje", "Vaske lenge før trykk"], answer: 0, why: "Direkte trykk i såret og trykkbandasje er førstevalg." },
+  { q: "Hva gjør du ved mulig forgiftning gjennom munnen?", options: ["Fremkaller brekninger", "Finner stoff, mengde og tidspunkt og ber om råd", "Gir alltid melk", "Lar personen sove"], answer: 1, why: "Ikke fremkall brekninger. Identifiser eksponeringen og kontakt Giftinformasjonen eller 1-1-3 ved symptomer." },
+  { q: "Hva inngår i psykososial førstehjelp?", options: ["Være nær, lytte, akseptere og gi omsorg", "Love at alt går bra", "Presse personen til å snakke", "Gå uten å forklare"], answer: 0, why: "Prinsippene er: Vær nærværende, lytt oppmerksomt, aksepter ulike reaksjoner og gi omsorg og praktisk hjelp." }
+  ,{ q: "Hva er det første du gjør når du kommer til et mulig farlig skadested?", options: ["Løper rett til pasienten", "Stopper og vurderer egen sikkerhet og farer", "Tar bilde", "Starter med pulstelling"], answer: 1, why: "Egensikkerhet kommer først. Du må oppdage og redusere farer før du kan hjelpe trygt." }
+  ,{ q: "Hvorfor gjentas XABCDE-undersøkelsen?", options: ["For å fylle tiden", "Fordi tilstanden og effekten av tiltak kan endre seg", "Bare fordi AMK spør", "Den skal ikke gjentas"], answer: 1, why: "Undersøkelsen er et øyeblikksbilde. Gjentakelse oppdager endringer og viser om tiltak virker." }
+  ,{ q: "Hva betyr C i ACVPU?", options: ["Cold", "Confusion – forvirring", "Circulation", "Compressions"], answer: 1, why: "C markerer nyoppstått forvirring og er et viktig faresignal." }
+  ,{ q: "Hva er et mulig tegn på sirkulasjonssvikt?", options: ["Varm og tørr hud", "Blek, kald og klam hud", "Lavere pustefrekvens etter hvile", "God matlyst"], answer: 1, why: "Blek, kald og klam hud kan være tegn på sviktende sirkulasjon." }
+  ,{ q: "Hva gjør du med første bandasje hvis blod trenger gjennom?", options: ["Tar den av", "Legger mer trykk/bandasje utenpå", "Vasker såret", "Venter uten tiltak"], answer: 1, why: "Behold trykket og legg mer materiale utenpå. Å fjerne første bandasje kan rive opp koagelet." }
+  ,{ q: "En bevisstløs person puster normalt. Hva er viktig videre?", options: ["Sideleie og jevnlig pustekontroll", "Mat og drikke", "La personen være alene", "Bukstøt"], answer: 0, why: "Legg i sideleie, varsle ved behov og kontroller pusten jevnlig fordi tilstanden kan endre seg." }
+  ,{ q: "Hva betyr P i PIKSIB?", options: ["Puls", "Planlegge", "Pasient", "Prioritere"], answer: 1, why: "PIKSIB starter med Planlegge, før Iverksette og Kontrollere." }
+  ,{ q: "Hva betyr B i PIKSIB?", options: ["Bandasje", "Bevissthet", "Bedømme", "Beskytte"], answer: 2, why: "B står for Bedømme – vurder situasjonen og effekten på nytt." }
+  ,{ q: "Hva er veiledende normal pustefrekvens for voksne på tiltakskortet?", options: ["6–10", "12–18", "20–30", "35–45"], answer: 1, why: "Tiltakskortet oppgir 12–18 pust per minutt for personer over 18 år." }
+  ,{ q: "Hva er veiledende hvilepuls for personer over 18 år på kortet?", options: ["20–40", "51–80", "90–130", "100–160"], answer: 1, why: "Kortet oppgir 51–80 slag per minutt som veiledende hvilepuls for voksne." }
+  ,{ q: "Hvordan håndteres et mulig brudd?", options: ["Settes alltid på plass", "Støttes i stillingen det ligger", "Masséres hardt", "Pasienten må gå på det"], answer: 1, why: "Støtt kroppsdelen i stillingen den ligger og unngå unødvendig bevegelse." }
+  ,{ q: "Hva er viktig ved nedkjøling?", options: ["Bare et teppe oppå", "Isolasjon både under og rundt pasienten", "Gni huden", "Gi alkohol"], answer: 1, why: "Beskytt mot bakken, vind og vann, og isoler hele pasienten. Varm forsiktig." }
+  ,{ q: "Hva gjør du ved mulig nakkeskade og fri luftvei?", options: ["Prioriterer luftveien og bruker skånsom teknikk", "Lar luftveien være stengt", "Bøyer nakken kraftig", "Gir drikke"], answer: 0, why: "Fri luftvei har høy prioritet. Bruk kjeveløft og minst mulig unødvendig bevegelse når skade mistenkes." }
+  ,{ q: "Hvorfor brukes høyttaler ved samtale med 1-1-3?", options: ["For underholdning", "For å kunne hjelpe samtidig og følge veiledning", "For å ta opp samtalen", "Det er påbudt i alle situasjoner"], answer: 1, why: "Høyttaler gjør at du kan fortsette livreddende tiltak mens AMK veileder." }
+  ,{ q: "Hva skal du gjøre med kjemikalier på huden?", options: ["Gni dem inn", "Beskytte deg selv, fjerne forurensning og skylle etter råd", "Dekke uten å undersøke", "Smake for å identifisere"], answer: 1, why: "Egenbeskyttelse er avgjørende. Fjern eksponeringen og innhent faglig råd om skylling og videre tiltak." }
+  ,{ q: "Hva er riktig kommunikasjon med en sterkt preget person?", options: ["Presse frem detaljer", "Være rolig, lytte og gi konkret hjelp", "Love at alt ordner seg", "Diskutere skyld"], answer: 1, why: "Rolig nærvær, lytting og praktisk hjelp er kjernen i psykososial førstehjelp." }
+];
+
+const instructorPrompts = [
+  { title: "Varslingsduell", text: "To og to: Én er AMK, én er førstehjelper. Førstehjelperen har 90 sekunder på å oppgi sted, hva som har skjedd, antall pasienter og viktigste funn." },
+  { title: "Finn fem farer", text: "Se for dere en trafikkulykke i mørket. Gruppen roper ut fem farer eller sikringstiltak før noen går inn til pasienten." },
+  { title: "XABCDE-stafett", text: "Gi hver deltaker én bokstav. De må si ett funn og ett tiltak for bokstaven sin – i riktig rekkefølge." },
+  { title: "Agonalt eller normalt?", text: "Én deltaker beskriver pust med få, uregelmessige gisp. Resten må ta beslutningen høyt: normal eller unormal pust, og neste tiltak." },
+  { title: "FAST på 30 sekunder", text: "Øv i par: smil, løft begge armer og si setningen «Solen skinner i dag». Avslutt med hva dere gjør ved ett positivt funn." },
+  { title: "Banak-lagene", text: "Gruppen forklarer riktig rekkefølge: dampsperre, varmekilde, isolasjon og vind-/vanntett lag. Hva må også ligge under pasienten?" },
+  { title: "Vær – lytt – aksepter – gi", text: "Rollespill i par: Én er preget etter en hendelse, én øver på å være til stede uten å presse eller love for mye." }
+];
+
 const STORAGE_KEY = "klarx-progress-v1";
 const AUDIO_KEY = "klarx-audio-v1";
 const progressStore = createProgressStore(localStorage, STORAGE_KEY);
 let state = progressStore.read();
 let currentLesson = 0;
 let quiz = null;
+let sequence = null;
+let currentInstructorPrompt = 0;
+let timerId = null;
+let deferredInstallPrompt = null;
 
 function saveProgress() {
   progressStore.write(state);
@@ -85,14 +149,11 @@ function homeView() {
   const percent = Math.round((state.learned.length / lessons.length) * 100);
   return `
     <section class="hero-card">
-      <div class="streak">⚡ ${state.streak || 0} dagers øvingsrekke</div>
-      <p class="eyebrow">Dagens miniøkt</p>
-      <h1>Bli klar når det gjelder.</h1>
-      <p>Korte runder. Store knapper. Opplesning når du vil. Start med XABCDE og øv i ditt tempo.</p>
-      <div class="cta-row">
-        <a class="button" href="#play">▶ Spill 5 spørsmål</a>
-        <a class="button secondary" href="#learn">Lær XABCDE</a>
-      </div>
+      <img src="./logo.png" alt="" width="105" height="105">
+      <div><p class="eyebrow">KLARX · FØRSTEHJELPSTRENING</p>
+      <h1>Hva vil du øve på?</h1>
+      <p>Velg en kort økt, et spill eller instruktørmodus.</p>
+      <div class="cta-row"><a class="button" href="#kfor">Start KFØR-trening</a><button class="button secondary" data-install>Installer app</button></div></div>
     </section>
     <section aria-labelledby="progress-title">
       <div class="section-head"><h2 id="progress-title">Din fremdrift</h2><span class="tiny">Beste quiz: ${state.best}/5</span></div>
@@ -100,12 +161,37 @@ function homeView() {
       <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="6" aria-valuenow="${state.learned.length}"><div class="progress-fill" style="width:${percent}%"></div></div>
     </section>
     <section class="mode-grid" aria-label="Velg øvingsmåte">
+      <a class="mode-card kfor" href="#kfor"><span class="mode-icon">K</span><span><strong>KFØR-klar</strong><p>Scenarioer, oppgaver og instruktørmodus</p></span></a>
       <a class="mode-card" href="#learn"><span class="mode-icon">ABC</span><span><strong>Lær kortet</strong><p>Én bokstav om gangen</p></span></a>
       <a class="mode-card play" href="#play"><span class="mode-icon">▶</span><span><strong>Spill</strong><p>Fem raske valg</p></span></a>
       <a class="mode-card piksib" href="#piksib"><span class="mode-icon">P</span><span><strong>PIKSIB</strong><p>Vaktlederens huskeregel</p></span></a>
       <a class="mode-card values" href="#values"><span class="mode-icon">12</span><span><strong>Normalverdier</strong><p>Pust og hvilepuls</p></span></a>
     </section>
+    <section class="live-panel" aria-labelledby="live-title">
+      <div><p class="eyebrow">KlarX live</p><h2 id="live-title">Vi øver sammen</h2></div>
+      <a class="counter-link" href="https://www.stats4u.net/live/3390558955" target="_blank" rel="noreferrer" aria-label="Åpne anonym besøksstatistikk for KlarX">
+        <img src="https://www.stats4u.net/?action=pic&amp;s4uid=3390558955&amp;s4ustyleid=2000&amp;plang=en" alt="Besøksteller som viser besøk i dag, i går, totalt og aktive nå" width="190" height="120">
+      </a>
+      <p class="tiny">I telleren betyr <strong>Total</strong> samlet bruk og <strong>Online</strong> aktive nå. Anonyme tall uten informasjonskapsler.</p>
+    </section>
     <aside class="emergency-note"><span class="emergency-number">113</span><span><strong>Ved fare for liv:</strong><br>Ring 1-1-3 og følg veiledningen du får.</span></aside>`;
+}
+
+function kforView() {
+  return `
+    ${header("Bli KFØR-klar", "Før kurset")}
+    <p class="lead">Tren på beslutninger, samarbeid og rekkefølge i korte økter. Velg det som passer gruppen.</p>
+    <section class="course-grid" aria-label="KFØR-aktiviteter">
+      <a class="course-card sprint" href="#kfor-game"><span>⚡</span><strong>Scenario-sprint</strong><p>Fem situasjoner. Velg raskt og få forklaring.</p></a>
+      <a class="course-card sequence" href="#sequence"><span>↕</span><strong>Rekkefølgejakten</strong><p>Trykk XABCDE i riktig rekkefølge.</p></a>
+      <a class="course-card instructor" href="#instructor"><span>◉</span><strong>Instruktørmodus</strong><p>Gruppeoppgaver og en enkel 90-sekunders timer.</p></a>
+    </section>
+    <div class="section-head"><h2>12 korte temaer</h2><span class="tiny">Trykk for å åpne</span></div>
+    <section class="module-list">${kforModules.map((module) => `
+      <details class="module-card"><summary><span>${module.code}</span><div><strong>${module.title}</strong><small>${module.cue}</small></div></summary>
+      <ul class="check-list">${module.points.map((point) => `<li>${point}</li>`).join("")}</ul>
+      <button class="button ghost full" data-speak="${escapeAttr(`${module.title}. ${module.points.join(" ")}`)}">◖))) Les opp temaet</button></details>`).join("")}</section>
+    <aside class="course-note"><strong>Viktig:</strong> KlarX er teoristøtte før og mellom øvelser. Praktiske ferdigheter skal læres og vurderes på kurset.</aside>`;
 }
 
 function learnView() {
@@ -128,18 +214,19 @@ function learnView() {
     <p class="tiny">Tips: Si bokstaven og stikkordet høyt før du går videre.</p>`;
 }
 
-function startQuiz() {
-  const shuffled = [...questions].sort(() => Math.random() - .5).slice(0, 5);
-  quiz = { items: shuffled, index: 0, score: 0, answered: false };
+function startQuiz(mode = "xabcde") {
+  const source = mode === "kfor" ? kforQuestions : questions;
+  const shuffled = [...source].sort(() => Math.random() - .5).slice(0, 5);
+  quiz = { mode, items: shuffled, index: 0, score: 0, answered: false };
   registerActivity();
 }
 
-function playView() {
-  if (!quiz) startQuiz();
+function playView(mode = "xabcde") {
+  if (!quiz || quiz.mode !== mode) startQuiz(mode);
   if (quiz.index >= quiz.items.length) return resultView();
   const item = quiz.items[quiz.index];
   return `
-    ${header("Rask runde", "Spill")}
+    ${header(mode === "kfor" ? "Scenario-sprint" : "Rask runde", mode === "kfor" ? "KFØR-spill" : "Spill")}
     <div class="progress-label"><span>Spørsmål ${quiz.index + 1} av ${quiz.items.length}</span><span>${quiz.score} poeng</span></div>
     <div class="progress-track"><div class="progress-fill" style="width:${(quiz.index / quiz.items.length) * 100}%"></div></div>
     <article class="quiz-card" style="margin-top:1rem">
@@ -152,7 +239,8 @@ function playView() {
 }
 
 function resultView() {
-  state.best = Math.max(state.best, quiz.score);
+  if (quiz.mode === "kfor") state.kforBest = Math.max(state.kforBest || 0, quiz.score);
+  else state.best = Math.max(state.best, quiz.score);
   saveProgress();
   const message = quiz.score === 5 ? "Full kontroll!" : quiz.score >= 3 ? "Godt jobbet!" : "Ny runde gir ny læring.";
   return `
@@ -163,8 +251,33 @@ function resultView() {
       <p class="muted">Hvert forsøk gjør huskeregelen litt lettere å hente frem.</p>
       <div class="cta-row" style="justify-content:center">
         <button class="button" id="restart-quiz">Spill igjen</button>
-        <a class="button ghost" href="#learn">Se læringskort</a>
+        <a class="button ghost" href="${quiz.mode === "kfor" ? "#kfor" : "#learn"}">${quiz.mode === "kfor" ? "Til KFØR" : "Se læringskort"}</a>
       </div>
+    </section>`;
+}
+
+function sequenceView() {
+  if (!sequence) sequence = { remaining: [...lessons].sort(() => Math.random() - .5), picked: [], done: false };
+  return `
+    ${header("Rekkefølgejakten", "KFØR-spill")}
+    <p class="lead">Trykk bokstavene i riktig XABCDE-rekkefølge. Feil trykk gir et hint – du mister ingenting.</p>
+    <div class="sequence-slots" aria-label="Din rekkefølge">${lessons.map((_, index) => `<span class="${sequence.picked[index] ? "filled" : ""}">${sequence.picked[index]?.letter || "?"}</span>`).join("")}</div>
+    <div class="sequence-choices">${sequence.remaining.map((item) => `<button data-sequence="${item.letter}" aria-label="Velg ${item.letter}, ${item.title}"><b>${item.letter}</b><small>${item.title}</small></button>`).join("")}</div>
+    <div class="feedback" id="sequence-feedback" aria-live="polite">${sequence.done ? `<strong>Fullført!</strong> XABCDE sitter i riktig rekkefølge.` : "Neste bokstav venter."}</div>
+    <button class="button ghost full" id="restart-sequence">Bland på nytt</button>`;
+}
+
+function instructorView() {
+  const prompt = instructorPrompts[currentInstructorPrompt];
+  return `
+    ${header("Instruktørmodus", "KFØR i gruppe")}
+    <article class="instructor-card">
+      <span class="activity-number">Oppgave ${currentInstructorPrompt + 1} av ${instructorPrompts.length}</span>
+      <h2>${prompt.title}</h2><p>${prompt.text}</p>
+      <button class="button full" id="next-prompt">Ny gruppeoppgave</button>
+    </article>
+    <section class="timer-card"><p class="eyebrow">Øvingstimer</p><strong id="timer-number">01:30</strong><p>Bruk timeren til varslingsøvelser eller korte lagdiskusjoner.</p>
+      <div class="cta-row"><button class="button" id="timer-start">Start 90 sek</button><button class="button ghost" id="timer-reset">Nullstill</button></div>
     </section>`;
 }
 
@@ -200,17 +313,27 @@ function moreView() {
         <div class="number-card"><small>Politi</small><strong>112</strong>Nødnummer</div>
         <div class="number-card"><small>Rask hjelp, ikke livstruende</small><strong>116 117</strong>Legevakt</div>
       </div>
-      <p class="tiny" style="margin-top:.8rem">Giftinformasjonen: 22 59 13 00 · Oppfølging av førstehjelpere: 02415</p>
+      <div class="number-grid secondary-numbers">
+        <a class="number-card poison" href="tel:22591300"><small>Forgiftning og råd</small><strong>22 59 13 00</strong>Giftinformasjonen</a>
+        <a class="number-card followup" href="tel:02415"><small>Etter en krevende hendelse</small><strong>02415</strong>Oppfølging av førstehjelpere</a>
+      </div>
     </section>
     <section class="panel">
       <h2>Sjekk appstatus</h2>
       <p class="muted">Kontrollerer bare denne enheten og appens ressurser. Ingenting lastes opp.</p>
       <div class="status-list" id="status-results" role="status"><span class="muted">Ingen sjekk kjørt ennå.</span></div>
       <button class="button ghost full" id="status-check">Sjekk status</button>
+      <button class="button full" id="refresh-app" style="margin-top:.65rem">↻ Hent siste versjon</button>
+    </section>
+    <section class="panel">
+      <h2>Installer på telefonen</h2>
+      <p class="muted">KlarX kan ligge på startskjermen og fungerer også uten nett etter første besøk.</p>
+      <button class="button full" data-install>＋ Installer KlarX</button>
     </section>
     <section class="panel">
       <h2>Om KlarX</h2>
-      <p>Et uoffisielt øvingsverktøy basert på brukerens tiltakskort. Det erstatter ikke kurs, praktisk trening eller råd fra helsepersonell.</p>
+      <p>Et uoffisielt øvingsverktøy basert på tiltakskortet og deltakerheftet for Kvalifisert førstehjelp. Det erstatter ikke kurs, praktisk trening eller råd fra helsepersonell.</p>
+      <p class="tiny">Besøkstall leveres som anonyme, samlede tall av Stats4U. Tjenesten bruker ikke informasjonskapsler og mottar ingen opplysninger du skriver inn – KlarX har ingen pasientregistrering.</p>
       <p><a href="https://www.rodekors.no/forstehjelp/" target="_blank" rel="noreferrer">Les offisiell førstehjelpsinformasjon hos Røde Kors ↗</a></p>
     </section>
     <button class="button ghost full" id="reset-progress">Nullstill min fremdrift</button>`;
@@ -222,16 +345,20 @@ function escapeAttr(value) {
 
 function getRoute() {
   const route = location.hash.replace("#", "") || "home";
-  return ["home", "learn", "play", "piksib", "values", "more"].includes(route) ? route : "home";
+  return ["home", "learn", "play", "piksib", "values", "kfor", "kfor-game", "sequence", "instructor", "more"].includes(route) ? route : "home";
 }
 
 function render() {
   const route = getRoute();
+  clearInterval(timerId);
+  timerId = null;
   if (route === "home") registerActivity();
-  const views = { home: homeView, learn: learnView, play: playView, piksib: piksibView, values: valuesView, more: moreView };
+  const views = { home: homeView, learn: learnView, play: () => playView("xabcde"), piksib: piksibView, values: valuesView, kfor: kforView, "kfor-game": () => playView("kfor"), sequence: sequenceView, instructor: instructorView, more: moreView };
   document.querySelector("#main").innerHTML = views[route]();
-  document.querySelectorAll("[data-nav]").forEach((link) => link.classList.toggle("active", link.dataset.nav === route || (route === "piksib" && link.dataset.nav === "learn") || (route === "values" && link.dataset.nav === "learn")));
+  const navRoute = ["kfor-game", "sequence", "instructor"].includes(route) ? "kfor" : ["piksib", "values"].includes(route) ? "learn" : route;
+  document.querySelectorAll("[data-nav]").forEach((link) => link.classList.toggle("active", link.dataset.nav === navRoute));
   bindActions(route);
+  updateInstallButtons();
   const autoAudio = localStorage.getItem(AUDIO_KEY) === "true";
   document.querySelector("#audio-toggle").setAttribute("aria-pressed", String(autoAudio));
   if (autoAudio && route !== "home") {
@@ -255,12 +382,76 @@ function bindActions(route) {
   document.querySelectorAll("[data-answer]").forEach((button) => button.addEventListener("click", () => answerQuestion(Number(button.dataset.answer))));
   document.querySelector("#next-question")?.addEventListener("click", () => { quiz.index += 1; quiz.answered = false; render(); });
   document.querySelector("#restart-quiz")?.addEventListener("click", () => { quiz = null; render(); });
+  document.querySelectorAll("[data-sequence]").forEach((button) => button.addEventListener("click", () => chooseSequence(button.dataset.sequence)));
+  document.querySelector("#restart-sequence")?.addEventListener("click", () => { sequence = null; render(); });
+  document.querySelector("#next-prompt")?.addEventListener("click", () => { currentInstructorPrompt = (currentInstructorPrompt + 1) % instructorPrompts.length; render(); });
+  document.querySelector("#timer-start")?.addEventListener("click", startTimer);
+  document.querySelector("#timer-reset")?.addEventListener("click", () => setTimerDisplay(90));
+  document.querySelectorAll("[data-install]").forEach((button) => button.addEventListener("click", installApp));
   document.querySelector("#status-check")?.addEventListener("click", runStatusCheck);
+  document.querySelector("#refresh-app")?.addEventListener("click", refreshApp);
   document.querySelector("#reset-progress")?.addEventListener("click", () => {
     state = progressStore.clear();
     showToast("Fremdriften er nullstilt på denne enheten.");
     render();
   });
+}
+
+function chooseSequence(letter) {
+  if (sequence.done) return;
+  const expected = lessons[sequence.picked.length];
+  const feedback = document.querySelector("#sequence-feedback");
+  if (letter !== expected.letter) {
+    feedback.innerHTML = `<strong>Nesten!</strong> Se etter bokstaven som handler om «${expected.title}».`;
+    return;
+  }
+  const chosen = sequence.remaining.find((item) => item.letter === letter);
+  sequence.picked.push(chosen);
+  sequence.remaining = sequence.remaining.filter((item) => item.letter !== letter);
+  sequence.done = sequence.remaining.length === 0;
+  if (sequence.done) registerActivity();
+  render();
+}
+
+function setTimerDisplay(seconds) {
+  const display = document.querySelector("#timer-number");
+  if (display) display.textContent = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function startTimer() {
+  clearInterval(timerId);
+  let seconds = 90;
+  setTimerDisplay(seconds);
+  timerId = setInterval(() => {
+    seconds -= 1;
+    setTimerDisplay(seconds);
+    if (seconds <= 0) { clearInterval(timerId); timerId = null; showToast("Tiden er ute – samle laget!"); }
+  }, 1000);
+}
+
+function isStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function updateInstallButtons() {
+  document.querySelectorAll("[data-install]").forEach((button) => {
+    if (isStandalone()) { button.textContent = "✓ Appen er installert"; button.disabled = true; }
+  });
+}
+
+async function installApp() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    updateInstallButtons();
+    return;
+  }
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  document.querySelector("#install-guide").innerHTML = isIos
+    ? "<p>Trykk <strong>Del</strong> i Safari, bla ned og velg <strong>Legg til på Hjem-skjerm</strong>.</p>"
+    : "<p>Åpne nettlesermenyen og velg <strong>Installer app</strong> eller <strong>Legg til på startskjermen</strong>.</p>";
+  document.querySelector("#install-dialog").showModal();
 }
 
 function answerQuestion(selected) {
@@ -291,6 +482,24 @@ function runStatusCheck() {
   document.querySelector("#status-results").innerHTML = checks.map(([name, ok, note]) => `<div class="status-row"><span><strong>${name}</strong><br><small>${note}</small></span><span class="${ok ? "status-ok" : "status-warn"}">${ok ? "OK" : "OBS"}</span></div>`).join("");
 }
 
+async function refreshApp() {
+  if (!navigator.onLine) return showToast("Koble til nett før du henter ny versjon.");
+  const button = document.querySelector("#refresh-app");
+  if (button) { button.disabled = true; button.textContent = "Henter siste versjon …"; }
+  try {
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((key) => key.startsWith("klarx-")).map((key) => caches.delete(key)));
+    }
+    const registration = await navigator.serviceWorker?.getRegistration();
+    await registration?.update();
+    location.reload();
+  } catch {
+    showToast("Oppdateringen kunne ikke hentes akkurat nå.");
+    if (button) { button.disabled = false; button.textContent = "↻ Hent siste versjon"; }
+  }
+}
+
 document.querySelector("#audio-toggle").addEventListener("click", (event) => {
   const next = event.currentTarget.getAttribute("aria-pressed") !== "true";
   localStorage.setItem(AUDIO_KEY, String(next));
@@ -299,7 +508,34 @@ document.querySelector("#audio-toggle").addEventListener("click", (event) => {
   if (next) speak("Automatisk opplesning er på."); else window.speechSynthesis?.cancel();
 });
 
-window.addEventListener("hashchange", () => { if (getRoute() !== "play") quiz = null; render(); window.scrollTo(0, 0); });
+document.querySelector("#theme-toggle").addEventListener("click", () => {
+  const next = document.documentElement.dataset.theme === "blue" ? "light" : "blue";
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem("klarx-theme", next);
+  updateThemeButton();
+});
 
-if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
+function updateThemeButton() {
+  const blue = document.documentElement.dataset.theme === "blue";
+  document.querySelector("#theme-toggle").textContent = blue ? "☀️ Lyst tema" : "🚨 Blålys-tema";
+}
+
+window.addEventListener("beforeinstallprompt", (event) => { event.preventDefault(); deferredInstallPrompt = event; updateInstallButtons(); });
+window.addEventListener("appinstalled", () => { deferredInstallPrompt = null; showToast("KlarX er installert!"); updateInstallButtons(); });
+document.querySelector("#close-install").addEventListener("click", () => document.querySelector("#install-dialog").close());
+document.querySelector("#install-dialog-action").addEventListener("click", () => document.querySelector("#install-dialog").close());
+window.addEventListener("hashchange", () => { const route = getRoute(); if (!["play", "kfor-game"].includes(route)) quiz = null; if (route !== "sequence") sequence = null; render(); window.scrollTo(0, 0); });
+
+if ("serviceWorker" in navigator) window.addEventListener("load", async () => {
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (hadController && !reloading) { reloading = true; location.reload(); }
+  });
+  try {
+    const registration = await navigator.serviceWorker.register("./sw.js");
+    if (navigator.onLine) await registration.update();
+  } catch {}
+});
 render();
+updateThemeButton();

@@ -1,5 +1,15 @@
 # Endringslogg
 
+## [0.2.0] - 2026-09-06
+
+- La til en full KFØR-seksjon med 12 korte temaer fra deltakerheftet.
+- Utvidet til 32 varierte KFØR-scenarier og 12 tiltakskortspørsmål, fortsatt fem per runde.
+- La til XABCDE-rekkefølgespill, instruktøraktiviteter og 90-sekunders øvingstimer.
+- Gjorde installasjon tydelig og la til komplette PWA-ikoner og snarveier.
+- Oppgraderte grensesnittet til blålystema og gjorde viktige nummer tydelige og trykkbare.
+- La til anonym visning av aktive brukere og samlet antall unike besøk.
+- La til automatisk og manuell cache-refresh, med trygg frakoblet reserve.
+
 ## [0.1.0] - 2026-09-06
 
 - Lanserte KlarX som mobilvennlig PWA bygget på Julian Project Framework 1.2.0.
