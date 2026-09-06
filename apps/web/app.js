@@ -149,7 +149,7 @@ function homeView() {
   const percent = Math.round((state.learned.length / lessons.length) * 100);
   return `
     <section class="hero-card">
-      <img src="./logo.png" alt="" width="105" height="105">
+      <span class="hero-mark" aria-hidden="true">X</span>
       <div><p class="eyebrow">KLARX · FØRSTEHJELPSTRENING</p>
       <h1>Hva vil du øve på?</h1>
       <p>Velg en kort økt, et spill eller instruktørmodus.</p>
