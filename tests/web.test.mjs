@@ -24,6 +24,9 @@ test("appen har tiltak, varsling og trygg ansvarsfraskrivelse", async () => {
   assert.match(app, /Bli KFØR-klar/);
   assert.match(app, /Instruktørmodus/);
   assert.match(app, /Rekkefølgejakten/);
+  assert.match(app, /Hvor kommer spørsmålene fra/);
+  assert.match(app, /september 2025/);
+  assert.match(app, /versjon 2\.0/);
 });
 
 test("spørsmålsbanken gir varierte femspørsmålsrunder", async () => {

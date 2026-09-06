@@ -167,6 +167,9 @@ p { line-height: 1.55; }
 .module-card .check-list, .module-card .button { width: calc(100% - 1.6rem); margin-inline: .8rem; }
 .module-card .button { margin-bottom: .8rem; }
 .course-note { margin-top: 1rem; padding: 1rem; border-left: 5px solid var(--yellow); border-radius: 12px; background: #fff8d9; line-height: 1.5; }
+.source-card { margin-top: .8rem; padding: 1rem; color: #eef7ff; border: 1px solid #29435d; border-radius: 18px; background: #0d2237; }
+.source-card h2 { margin-bottom: .5rem; }
+.source-card .button { margin-top: .25rem; }
 
 .sequence-slots { display: grid; grid-template-columns: repeat(6, 1fr); gap: .4rem; margin: 1rem 0; }
 .sequence-slots span { display: grid; min-height: 55px; place-items: center; color: var(--muted); border: 2px dashed #b9cbd4; border-radius: 15px; background: white; font-size: 1.35rem; font-weight: 950; }

@@ -191,7 +191,14 @@ function kforView() {
       <details class="module-card"><summary><span>${module.code}</span><div><strong>${module.title}</strong><small>${module.cue}</small></div></summary>
       <ul class="check-list">${module.points.map((point) => `<li>${point}</li>`).join("")}</ul>
       <button class="button ghost full" data-speak="${escapeAttr(`${module.title}. ${module.points.join(" ")}`)}">◖))) Les opp temaet</button></details>`).join("")}</section>
-    <aside class="course-note"><strong>Viktig:</strong> KlarX er teoristøtte før og mellom øvelser. Praktiske ferdigheter skal læres og vurderes på kurset.</aside>`;
+    <aside class="course-note"><strong>Viktig:</strong> KlarX er teoristøtte før og mellom øvelser. Praktiske ferdigheter skal læres og vurderes på kurset.</aside>
+    <section class="source-card">
+      <p class="eyebrow">Faggrunnlag</p>
+      <h2>Hvor kommer spørsmålene fra?</h2>
+      <p>Spørsmål og forklaringer bygger på <strong>«Kvalifisert førstehjelp – Deltakerhefte» (september 2025)</strong> og brukerens <strong>XABCDE-tiltakskort, PIKSIB og normalverdier (versjon 2.0)</strong>.</p>
+      <p class="tiny">Sist faglig kontrollert 6. september 2026. KlarX følges opp ved nye utgivelser, og kildeversjonen oppdateres når nytt materiale er kontrollert.</p>
+      <a class="button ghost" href="https://github.com/Border55-repo/KlarX/blob/main/docs/SOURCES.md" target="_blank" rel="noreferrer">Se full kildeoversikt ↗</a>
+    </section>`;
 }
 
 function learnView() {
@@ -335,6 +342,7 @@ function moreView() {
       <p>Et uoffisielt øvingsverktøy basert på tiltakskortet og deltakerheftet for Kvalifisert førstehjelp. Det erstatter ikke kurs, praktisk trening eller råd fra helsepersonell.</p>
       <p class="tiny">Besøkstall leveres som anonyme, samlede tall av Stats4U. Tjenesten bruker ikke informasjonskapsler og mottar ingen opplysninger du skriver inn – KlarX har ingen pasientregistrering.</p>
       <p><a href="https://www.rodekors.no/forstehjelp/" target="_blank" rel="noreferrer">Les offisiell førstehjelpsinformasjon hos Røde Kors ↗</a></p>
+      <p><a href="https://github.com/Border55-repo/KlarX/blob/main/docs/SOURCES.md" target="_blank" rel="noreferrer">Se fagkilder og kildeversjoner ↗</a></p>
     </section>
     <button class="button ghost full" id="reset-progress">Nullstill min fremdrift</button>`;
 }
