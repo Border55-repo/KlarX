@@ -1,0 +1,14 @@
+{
+  "name": "KlarX – førstehjelpstrener",
+  "short_name": "KlarX",
+  "description": "Korte førstehjelpsøkter med opplesning og quiz.",
+  "lang": "nb",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef4f6",
+  "theme_color": "#123a56",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
