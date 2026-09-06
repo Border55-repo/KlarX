@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="nb">
+<html lang="nb" data-theme="blue">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -8,7 +8,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="KlarX" />
-    <script>document.documentElement.dataset.theme = localStorage.getItem("klarx-theme") || "blue";</script>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./icon-192.png" />
@@ -22,12 +21,9 @@
       <header class="topbar">
         <a class="brand" href="#home" aria-label="KlarX – hjem">
           <span class="brand-mark" aria-hidden="true">X</span>
-          <span><strong>KlarX</strong><small>Verktøy for førstehjelpstrening</small></span>
+          <span><strong>KlarX</strong><small>førstehjelpstrener</small></span>
         </a>
-        <div class="top-actions">
-          <button id="theme-toggle" type="button">☀️ Lyst tema</button>
-          <button id="audio-toggle" type="button" aria-pressed="false" aria-label="Slå på automatisk opplesning">◖))) Lyd</button>
-        </div>
+        <button class="icon-button" id="audio-toggle" type="button" aria-pressed="false" aria-label="Slå på automatisk opplesning"><span aria-hidden="true">◖)))</span></button>
       </header>
 
       <main id="main" tabindex="-1"></main>

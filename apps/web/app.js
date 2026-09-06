@@ -149,11 +149,11 @@ function homeView() {
   const percent = Math.round((state.learned.length / lessons.length) * 100);
   return `
     <section class="hero-card">
-      <span class="hero-mark" aria-hidden="true">X</span>
-      <div><p class="eyebrow">KLARX · FØRSTEHJELPSTRENING</p>
-      <h1>Hva vil du øve på?</h1>
-      <p>Velg en kort økt, et spill eller instruktørmodus.</p>
-      <div class="cta-row"><a class="button" href="#kfor">Start KFØR-trening</a><button class="button secondary" data-install>Installer app</button></div></div>
+      <div class="streak">⚡ ${state.streak || 0} dagers øvingsrekke</div>
+      <p class="eyebrow">Dagens miniøkt</p>
+      <h1>Bli klar når det gjelder.</h1>
+      <p>Korte runder. Store knapper. Opplesning når du vil. Start med XABCDE og øv i ditt tempo.</p>
+      <div class="cta-row"><a class="button" href="#kfor">⚡ Start KFØR-trening</a><button class="button secondary" data-install>＋ Installer appen</button></div>
     </section>
     <section aria-labelledby="progress-title">
       <div class="section-head"><h2 id="progress-title">Din fremdrift</h2><span class="tiny">Beste quiz: ${state.best}/5</span></div>
@@ -508,18 +508,6 @@ document.querySelector("#audio-toggle").addEventListener("click", (event) => {
   if (next) speak("Automatisk opplesning er på."); else window.speechSynthesis?.cancel();
 });
 
-document.querySelector("#theme-toggle").addEventListener("click", () => {
-  const next = document.documentElement.dataset.theme === "blue" ? "light" : "blue";
-  document.documentElement.dataset.theme = next;
-  localStorage.setItem("klarx-theme", next);
-  updateThemeButton();
-});
-
-function updateThemeButton() {
-  const blue = document.documentElement.dataset.theme === "blue";
-  document.querySelector("#theme-toggle").textContent = blue ? "☀️ Lyst tema" : "🚨 Blålys-tema";
-}
-
 window.addEventListener("beforeinstallprompt", (event) => { event.preventDefault(); deferredInstallPrompt = event; updateInstallButtons(); });
 window.addEventListener("appinstalled", () => { deferredInstallPrompt = null; showToast("KlarX er installert!"); updateInstallButtons(); });
 document.querySelector("#close-install").addEventListener("click", () => document.querySelector("#install-dialog").close());
@@ -538,4 +526,3 @@ if ("serviceWorker" in navigator) window.addEventListener("load", async () => {
   } catch {}
 });
 render();
-updateThemeButton();
