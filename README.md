@@ -40,6 +40,8 @@ KlarX bruker Stats4U til å vise anonyme, samlede tall for aktive og totale bes�
 
 ## Faglige kilder
 
+Kildeversjonen vises i selve KFØR-seksjonen. Prosjektet følges opp mot nye utgivelser, men faginnhold endres først etter at den nye kilden er kontrollert.
+
 - Brukerens bilder av Røde Kors-kortet (versjon 2.0)
 - Brukerens deltakerhefte «Kvalifisert førstehjelp» (september 2025)
 - [Røde Kors: bevisstløshet og sideleie](https://www.rodekors.no/forstehjelp/tema/bevisstloshet/)

@@ -1,4 +1,4 @@
-const CACHE = "klarx-v4";
+const CACHE = "klarx-v5";
 const ASSETS = ["./", "./index.html", "./styles.css", "./app.js", "./progress.js", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png"];
 
 self.addEventListener("install", (event) => {

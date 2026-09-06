@@ -9,6 +9,8 @@
 - Oppgraderte grensesnittet til blålystema og gjorde viktige nummer tydelige og trykkbare.
 - La til anonym visning av aktive brukere og samlet antall unike besøk.
 - La til automatisk og manuell cache-refresh, med trygg frakoblet reserve.
+- Skjulte fasiten i inngangen til rekkefølgespillet.
+- La kilde og kildeversjon synlig ved spørsmålene, med oppfølging ved nye utgivelser.
 
 ## [0.1.0] - 2026-09-06
 
