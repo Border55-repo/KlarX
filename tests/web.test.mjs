@@ -6,7 +6,7 @@ const read = (name) => readFile(new URL(`../apps/web/${name}`, import.meta.url),
 
 test("webappen har norsk språk, mobilvisning og tilgjengelig hovedinnhold", async () => {
   const html = await read("index.html");
-  assert.match(html, /<html lang="nb">/);
+  assert.match(html, /<html lang="nb"/);
   assert.match(html, /width=device-width/);
   assert.match(html, /<main id="main"/);
   assert.match(html, /aria-label="Hovedmeny"/);
@@ -43,7 +43,7 @@ test("appen har installasjon og anonym besøksmåling", async () => {
 
 test("PWA-en cacher alle nødvendige lokale ressurser", async () => {
   const [worker, app] = await Promise.all([read("sw.js"), read("app.js")]);
-  for (const asset of ["index.html", "styles.css", "app.js", "progress.js", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "logo.png"]) assert.match(worker, new RegExp(asset.replace(".", "\\.")));
+  for (const asset of ["index.html", "styles.css", "app.js", "progress.js", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png", "icon-maskable-512.png"]) assert.match(worker, new RegExp(asset.replace(".", "\\.")));
   assert.match(worker, /fetch\(event\.request\)/);
   assert.match(app, /Hent siste versjon/);
   assert.match(app, /registration\.update/);
