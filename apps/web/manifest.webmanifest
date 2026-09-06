@@ -1,7 +1,7 @@
 {
   "name": "KlarX – førstehjelpstrener",
   "short_name": "KlarX",
-  "description": "Øv på XABCDE og KFØR med opplesning, scenarioer og spill.",
+  "description": "Øv på XABCDE og KFØR med personlig veileder, HLR-metronom, opplesning, scenarioer og spill.",
   "lang": "nb",
   "id": "./",
   "start_url": "./",
@@ -18,7 +18,9 @@
     { "src": "./icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
+    { "name": "Åpne tiltakskortet", "short_name": "Tiltak", "url": "./#action-card", "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }] },
     { "name": "KFØR-trening", "short_name": "KFØR", "url": "./#kfor", "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }] },
-    { "name": "Spill en runde", "short_name": "Spill", "url": "./#play", "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }] }
+    { "name": "HLR-metronom", "short_name": "HLR-takt", "url": "./#metronome", "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }] },
+    { "name": "Min veileder", "short_name": "Veileder", "url": "./#coach", "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }] }
   ]
 }

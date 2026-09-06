@@ -1,5 +1,13 @@
 # Endringslogg
 
+## [0.3.0] - 2026-09-06
+
+- La inn tiltakskortet som en rask, animert og frakoblet XABCDE-visning med stor 113-knapp.
+- La til en personlig veileder som bruker lokale quizresultater og feiltemaer til å foreslå neste øvelse.
+- La til HLR-metronom for trening på 100–120 kompresjoner per minutt og telling til 30.
+- Utvidet PWA-snarveiene og oppgraderte hurtigbufferen slik at nye funksjoner lastes inn automatisk.
+- La til et offentlig, skrivebeskyttet statusendepunkt for prosjektkontrollsenteret.
+
 ## [0.2.0] - 2026-09-06
 
 - La til en full KFØR-seksjon med 12 korte temaer fra deltakerheftet.

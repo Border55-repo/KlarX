@@ -1,6 +1,6 @@
 # KlarX – førstehjelpstrener
 
-En installerbar, mobilvennlig læringsapp for å øve på XABCDE-tiltakskortet og forberede seg til KFØR. Appen bruker korte læringskort, norsk taleopplesning, gruppeoppgaver og varierte scenariospill.
+En installerbar, mobilvennlig læringsapp for å øve på XABCDE-tiltakskortet og forberede seg til KFØR. Appen bruker korte læringskort, personlig veiledning på enheten, HLR-metronom, norsk taleopplesning, gruppeoppgaver og varierte scenariospill.
 
 > Appen er et øvingsverktøy, ikke en erstatning for førstehjelpskurs eller veiledning fra 113.
 
@@ -22,7 +22,11 @@ npm run check
 
 Fremdrift og quizsvar lagres bare i nettleserens `localStorage`. Ingen navn, pasientopplysninger, svar eller bilder sendes ut. Service worker gjør at allerede besøkt innhold kan brukes uten nett.
 
+Den personlige veilederen bruker bare øvde bokstaver, svarprosent og feiltemaer på brukerens egen enhet. Et valgfritt fornavn eller kallenavn blir også bare lagret lokalt.
+
 KlarX bruker Stats4U til å vise anonyme, samlede tall for aktive og totale besøk. Tjenesten oppgir at den ikke bruker informasjonskapsler eller lagrer IP-adresser. Telleren kan ikke se fremdrift eller svar.
+
+Kontrollsenter kan overvåke offentlig appversjon og driftsstatus uten GitHub-token via [`status.json`](https://border55-repo.github.io/KlarX/status.json).
 
 ## Installer på telefon
 
@@ -36,6 +40,9 @@ KlarX bruker Stats4U til å vise anonyme, samlede tall for aktive og totale bes�
 - Rekkefølgejakten trener XABCDE.
 - Instruktørmodus gir gruppeoppgaver og 90-sekunders timer.
 - 12 korte temaoppslag kan leses høyt.
+- Et interaktivt tiltakskort gir store X–E-knapper og direkte 113-handling, også frakoblet.
+- Min veileder foreslår neste øvelse ut fra den enkelte deltakerens lokale fremgang.
+- HLR-metronomen trener en jevn takt mellom 100 og 120 kompresjoner per minutt; den vurderer ikke teknikk.
 - Appen kontrollerer automatisk om en ny versjon finnes når den er på nett. Manuell cache-refresh finnes under **Mer**.
 
 ## Faglige kilder
