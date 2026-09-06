@@ -1,4 +1,4 @@
-import { createProgressStore } from "./progress.js";
+import { createProgressStore, getCoachPlan } from "./progress.js";
 
 const lessons = [
   { letter: "X", title: "Egensikkerhet", cue: "Se faren først", points: ["Sørg for egen sikkerhet og få oversikt.", "Stans livstruende stor blødning med én gang.", "Forebygg hypotermi – beskytt personen mot kulde, vind og vått underlag."] },
@@ -109,6 +109,11 @@ let sequence = null;
 let currentInstructorPrompt = 0;
 let timerId = null;
 let deferredInstallPrompt = null;
+let metronomeTimer = null;
+let audioContext = null;
+let compressionCount = 0;
+let metronomeBpm = 110;
+let metronomeRunning = false;
 
 function saveProgress() {
   progressStore.write(state);
@@ -161,6 +166,8 @@ function homeView() {
       <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="6" aria-valuenow="${state.learned.length}"><div class="progress-fill" style="width:${percent}%"></div></div>
     </section>
     <section class="mode-grid" aria-label="Velg øvingsmåte">
+      <a class="mode-card action" href="#action-card"><span class="mode-icon">X</span><span><strong>Tiltakskort</strong><p>Rask støtte i en skarp situasjon</p></span></a>
+      <a class="mode-card coach" href="#coach"><span class="mode-icon">◎</span><span><strong>Min veileder</strong><p>Personlige råd fra din fremgang</p></span></a>
       <a class="mode-card kfor" href="#kfor"><span class="mode-icon">K</span><span><strong>KFØR-klar</strong><p>Scenarioer, oppgaver og instruktørmodus</p></span></a>
       <a class="mode-card" href="#learn"><span class="mode-icon">ABC</span><span><strong>Lær kortet</strong><p>Én bokstav om gangen</p></span></a>
       <a class="mode-card play" href="#play"><span class="mode-icon">▶</span><span><strong>Spill</strong><p>Fem raske valg</p></span></a>
@@ -185,6 +192,8 @@ function kforView() {
       <a class="course-card sprint" href="#kfor-game"><span>⚡</span><strong>Scenario-sprint</strong><p>Fem situasjoner. Velg raskt og få forklaring.</p></a>
       <a class="course-card sequence" href="#sequence"><span>↕</span><strong>Rekkefølgejakten</strong><p>Finn hele undersøkelseskjeden uten hint.</p></a>
       <a class="course-card instructor" href="#instructor"><span>◉</span><strong>Instruktørmodus</strong><p>Gruppeoppgaver og en enkel 90-sekunders timer.</p></a>
+      <a class="course-card" href="#coach"><span>◎</span><strong>Min veileder</strong><p>Få et råd basert på dine egne økter og svar.</p></a>
+      <a class="course-card sprint" href="#metronome"><span>♥</span><strong>HLR-metronom</strong><p>Tren jevn kompresjonstakt mellom 100 og 120 per minutt.</p></a>
     </section>
     <div class="section-head"><h2>12 korte temaer</h2><span class="tiny">Trykk for å åpne</span></div>
     <section class="module-list">${kforModules.map((module) => `
@@ -199,6 +208,57 @@ function kforView() {
       <p class="tiny">Sist faglig kontrollert 6. september 2026. KlarX følges opp ved nye utgivelser, og kildeversjonen oppdateres når nytt materiale er kontrollert.</p>
       <a class="button ghost" href="https://github.com/Border55-repo/KlarX/blob/main/docs/SOURCES.md" target="_blank" rel="noreferrer">Se full kildeoversikt ↗</a>
     </section>`;
+}
+
+function actionCardView() {
+  const item = lessons[currentLesson];
+  return `
+    <section class="action-card-head">
+      <div>${header("Tiltakskort", "Rask støtte")}</div>
+      <a class="button emergency-call" href="tel:113">Ring 113</a>
+    </section>
+    <aside class="sharp-note"><strong>Er det fare for liv eller er du i tvil?</strong> Ring 1-1-3, sett telefonen på høyttaler og følg veiledningen.</aside>
+    <div class="letter-strip action-strip" role="tablist" aria-label="Velg trinn i tiltakskortet">
+      ${lessons.map((lesson, index) => `<button class="letter-pill ${index === currentLesson ? "active" : ""}" role="tab" aria-selected="${index === currentLesson}" data-lesson="${index}">${lesson.letter}</button>`).join("")}
+    </div>
+    <article class="action-focus" aria-live="polite">
+      <div class="action-letter"><span>${item.letter}</span></div>
+      <p class="eyebrow">${item.cue}</p><h2>${item.title}</h2>
+      <ol>${item.points.map((point) => `<li>${point}</li>`).join("")}</ol>
+      <div class="lesson-actions"><button class="button ghost" data-speak="${escapeAttr(`${item.letter}, ${item.title}. ${item.points.join(" ")}`)}">◖))) Les opp</button><a class="button" href="#learn">Øv på kortet</a></div>
+    </article>
+    <p class="tiny action-disclaimer">KlarX er et støtteverktøy og kan ikke vurdere pasienten. Egen sikkerhet og veiledning fra 1-1-3 går alltid foran appen.</p>`;
+}
+
+function coachView() {
+  const plan = getCoachPlan(state);
+  const stats = state.stats || {};
+  const accuracy = stats.answers ? Math.round((stats.correct / stats.answers) * 100) : 0;
+  const displayName = state.name ? ` for ${escapeHtml(state.name)}` : "";
+  return `
+    ${header(`Min veileder${displayName}`, "Personlig og lokalt")}
+    <p class="lead">Rådene lages bare fra fremgangen på denne enheten. Navn, svar og resultater sendes ikke ut.</p>
+    <form class="profile-form" id="profile-form"><label for="profile-name">Hva skal veilederen kalle deg?</label><div><input id="profile-name" maxlength="30" value="${escapeAttr(state.name || "")}" placeholder="Fornavn eller kallenavn"><button class="button" type="submit">Lagre</button></div></form>
+    <section class="coach-hero"><p class="eyebrow">Anbefalt neste økt</p><h2>${plan.title}</h2><p>${plan.reason}</p><a class="button" href="${plan.href}">${plan.action}</a></section>
+    <section class="coach-stats" aria-label="Din øvingsstatistikk">
+      <div><strong>${stats.answers || 0}</strong><span>svar</span></div><div><strong>${accuracy}%</strong><span>riktig</span></div><div><strong>${state.streak || 0}</strong><span>dager på rad</span></div><div><strong>${(stats.quizRuns || 0) + (stats.kforRuns || 0)}</strong><span>fullførte runder</span></div>
+    </section>
+    <section class="panel"><h2>Veilederens fokus</h2>${plan.weakTopic ? `<p>Du har mest å hente på <strong>${plan.weakTopic}</strong>. Feil brukes bare for å velge neste øvelse.</p>` : `<p>Fullfør flere spørsmål, så finner veilederen temaene som bør repeteres.</p>`}
+      <div class="coach-links"><a href="#metronome">♥ Tren HLR-takt</a><a href="#sequence">↕ Test rekkefølgen</a><a href="#kfor-game">⚡ Ta fem scenarioer</a></div></section>`;
+}
+
+function metronomeView() {
+  return `
+    ${header("HLR-metronom", "Takttrening")}
+    <p class="lead">KFØR-heftet angir 100–120 brystkompresjoner per minutt. 110 er valgt som et rolig midtpunkt.</p>
+    <section class="metronome-card">
+      <div class="beat-orb ${metronomeRunning ? "running" : ""}" id="beat-indicator"><span>♥</span></div>
+      <div class="bpm-readout"><strong>${metronomeBpm}</strong><span>kompresjoner/min</span></div>
+      <div class="bpm-options" aria-label="Velg takt">${[100, 105, 110, 115, 120].map((bpm) => `<button class="${bpm === metronomeBpm ? "active" : ""}" data-bpm="${bpm}">${bpm}</button>`).join("")}</div>
+      <p class="compression-counter"><strong id="compression-count">${compressionCount}</strong> av 30 kompresjoner</p>
+      <button class="button full" id="metronome-toggle">${metronomeRunning ? "Stopp metronom" : "Start metronom"}</button>
+    </section>
+    <aside class="course-note"><strong>Bare til trening:</strong> Metronomen måler ikke dybde, plassering eller full tilbakefjæring. Tren teknikk med instruktør og treningsdukke. Ved en reell hendelse: ring 1-1-3 og følg veiledningen.</aside>`;
 }
 
 function learnView() {
@@ -224,7 +284,7 @@ function learnView() {
 function startQuiz(mode = "xabcde") {
   const source = mode === "kfor" ? kforQuestions : questions;
   const shuffled = [...source].sort(() => Math.random() - .5).slice(0, 5);
-  quiz = { mode, items: shuffled, index: 0, score: 0, answered: false };
+  quiz = { mode, items: shuffled, index: 0, score: 0, answered: false, recorded: false };
   registerActivity();
 }
 
@@ -246,6 +306,12 @@ function playView(mode = "xabcde") {
 }
 
 function resultView() {
+  if (!quiz.recorded) {
+    quiz.recorded = true;
+    state.stats ||= { answers: 0, correct: 0, quizRuns: 0, kforRuns: 0, misses: {} };
+    if (quiz.mode === "kfor") state.stats.kforRuns = (state.stats.kforRuns || 0) + 1;
+    else state.stats.quizRuns = (state.stats.quizRuns || 0) + 1;
+  }
   if (quiz.mode === "kfor") state.kforBest = Math.max(state.kforBest || 0, quiz.score);
   else state.best = Math.max(state.best, quiz.score);
   saveProgress();
@@ -348,22 +414,39 @@ function moreView() {
 }
 
 function escapeAttr(value) {
-  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  return String(value).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
+function escapeHtml(value) {
+  return escapeAttr(value).replace(/'/g, "&#39;").replace(/>/g, "&gt;");
+}
+
+function questionTopic(item) {
+  const text = `${item.q} ${item.why}`.toLowerCase();
+  if (/hlr|hjertestarter|kompresjon|30:2|agonal/.test(text)) return "HLR og hjertestarter";
+  if (/luftvei|hoste|bukstøt|spebarn|fremmedlegeme/.test(text)) return "A – Luftvei";
+  if (/pust|respirasjon|cyanose/.test(text)) return "B – Pust";
+  if (/blødning|sirkulasjon|puls|klam|bandasje/.test(text)) return "C – Sirkulasjon";
+  if (/fast|bevisst|krampe|acvpu/.test(text)) return "D – Bevissthet";
+  if (/brann|frost|nedkjøling|brudd|forgiftning/.test(text)) return "E – Topp til tå";
+  if (/sikkerhet|varsle|1-1-3|lokasjon|skadested/.test(text)) return "Egensikkerhet og varsling";
+  return "KFØR-grunnlag";
 }
 
 function getRoute() {
   const route = location.hash.replace("#", "") || "home";
-  return ["home", "learn", "play", "piksib", "values", "kfor", "kfor-game", "sequence", "instructor", "more"].includes(route) ? route : "home";
+  return ["home", "action-card", "coach", "metronome", "learn", "play", "piksib", "values", "kfor", "kfor-game", "sequence", "instructor", "more"].includes(route) ? route : "home";
 }
 
 function render() {
   const route = getRoute();
+  if (route !== "metronome") stopMetronome(false);
   clearInterval(timerId);
   timerId = null;
   if (route === "home") registerActivity();
-  const views = { home: homeView, learn: learnView, play: () => playView("xabcde"), piksib: piksibView, values: valuesView, kfor: kforView, "kfor-game": () => playView("kfor"), sequence: sequenceView, instructor: instructorView, more: moreView };
+  const views = { home: homeView, "action-card": actionCardView, coach: coachView, metronome: metronomeView, learn: learnView, play: () => playView("xabcde"), piksib: piksibView, values: valuesView, kfor: kforView, "kfor-game": () => playView("kfor"), sequence: sequenceView, instructor: instructorView, more: moreView };
   document.querySelector("#main").innerHTML = views[route]();
-  const navRoute = ["kfor-game", "sequence", "instructor"].includes(route) ? "kfor" : ["piksib", "values"].includes(route) ? "learn" : route;
+  const navRoute = ["coach", "metronome", "kfor-game", "sequence", "instructor"].includes(route) ? "kfor" : ["action-card", "learn", "piksib", "values"].includes(route) ? "learn" : route;
   document.querySelectorAll("[data-nav]").forEach((link) => link.classList.toggle("active", link.dataset.nav === navRoute));
   bindActions(route);
   updateInstallButtons();
@@ -403,6 +486,79 @@ function bindActions(route) {
     showToast("Fremdriften er nullstilt på denne enheten.");
     render();
   });
+  document.querySelector("#profile-form")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    state.name = document.querySelector("#profile-name").value.trim().slice(0, 30);
+    saveProgress();
+    showToast(state.name ? `Veilederen husker ${state.name} på denne enheten.` : "Navnet er fjernet.");
+    render();
+  });
+  document.querySelectorAll("[data-bpm]").forEach((button) => button.addEventListener("click", () => setMetronomeBpm(Number(button.dataset.bpm))));
+  document.querySelector("#metronome-toggle")?.addEventListener("click", toggleMetronome);
+}
+
+function updateMetronomeUi() {
+  const count = document.querySelector("#compression-count");
+  const toggle = document.querySelector("#metronome-toggle");
+  const orb = document.querySelector("#beat-indicator");
+  if (count) count.textContent = String(compressionCount);
+  if (toggle) toggle.textContent = metronomeRunning ? "Stopp metronom" : "Start metronom";
+  orb?.classList.toggle("running", metronomeRunning);
+}
+
+function playMetronomeBeat() {
+  compressionCount = (compressionCount % 30) + 1;
+  const orb = document.querySelector("#beat-indicator");
+  orb?.classList.remove("beat");
+  if (orb) void orb.offsetWidth;
+  orb?.classList.add("beat");
+  setTimeout(() => orb?.classList.remove("beat"), 150);
+  updateMetronomeUi();
+  const AudioEngine = window.AudioContext || window.webkitAudioContext;
+  if (AudioEngine) {
+    audioContext ||= new AudioEngine();
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    oscillator.frequency.value = compressionCount === 30 ? 1040 : 760;
+    gain.gain.setValueAtTime(.08, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.0001, audioContext.currentTime + .07);
+    oscillator.connect(gain).connect(audioContext.destination);
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + .08);
+  }
+  if (compressionCount === 30) showToast("30 kompresjoner – følg treningsopplegget for 2 innblåsninger.");
+}
+
+function startMetronome() {
+  stopMetronome(false);
+  metronomeRunning = true;
+  audioContext?.resume?.();
+  playMetronomeBeat();
+  metronomeTimer = setInterval(playMetronomeBeat, 60000 / metronomeBpm);
+  registerActivity();
+  updateMetronomeUi();
+}
+
+function stopMetronome(updateUi = true) {
+  clearInterval(metronomeTimer);
+  metronomeTimer = null;
+  metronomeRunning = false;
+  if (updateUi) updateMetronomeUi();
+}
+
+function toggleMetronome() {
+  if (metronomeRunning) stopMetronome();
+  else startMetronome();
+}
+
+function setMetronomeBpm(bpm) {
+  if (![100, 105, 110, 115, 120].includes(bpm)) return;
+  const wasRunning = metronomeRunning;
+  stopMetronome(false);
+  metronomeBpm = bpm;
+  compressionCount = 0;
+  render();
+  if (wasRunning) startMetronome();
 }
 
 function chooseSequence(letter) {
@@ -472,7 +628,17 @@ function answerQuestion(selected) {
     if (index === item.answer) button.classList.add("correct");
     if (index === selected && selected !== item.answer) button.classList.add("wrong");
   });
-  if (selected === item.answer) quiz.score += 1;
+  state.stats ||= { answers: 0, correct: 0, quizRuns: 0, kforRuns: 0, misses: {} };
+  state.stats.misses ||= {};
+  state.stats.answers = (state.stats.answers || 0) + 1;
+  if (selected === item.answer) {
+    quiz.score += 1;
+    state.stats.correct = (state.stats.correct || 0) + 1;
+  } else {
+    const topic = questionTopic(item);
+    state.stats.misses[topic] = (state.stats.misses[topic] || 0) + 1;
+  }
+  saveProgress();
   document.querySelector("#feedback").innerHTML = `<strong>${selected === item.answer ? "Riktig!" : "Ikke helt."}</strong>${item.why}`;
   document.querySelector("#next-question").disabled = false;
   if (localStorage.getItem(AUDIO_KEY) === "true") speak(`${selected === item.answer ? "Riktig" : "Ikke helt"}. ${item.why}`);
@@ -520,7 +686,8 @@ window.addEventListener("beforeinstallprompt", (event) => { event.preventDefault
 window.addEventListener("appinstalled", () => { deferredInstallPrompt = null; showToast("KlarX er installert!"); updateInstallButtons(); });
 document.querySelector("#close-install").addEventListener("click", () => document.querySelector("#install-dialog").close());
 document.querySelector("#install-dialog-action").addEventListener("click", () => document.querySelector("#install-dialog").close());
-window.addEventListener("hashchange", () => { const route = getRoute(); if (!["play", "kfor-game"].includes(route)) quiz = null; if (route !== "sequence") sequence = null; render(); window.scrollTo(0, 0); });
+window.addEventListener("hashchange", () => { const route = getRoute(); if (route === "action-card") currentLesson = 0; if (!["play", "kfor-game"].includes(route)) quiz = null; if (route !== "sequence") sequence = null; render(); window.scrollTo(0, 0); });
+window.addEventListener("pagehide", () => stopMetronome(false));
 
 if ("serviceWorker" in navigator) window.addEventListener("load", async () => {
   const hadController = Boolean(navigator.serviceWorker.controller);

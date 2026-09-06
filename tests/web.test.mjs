@@ -27,6 +27,12 @@ test("appen har tiltak, varsling og trygg ansvarsfraskrivelse", async () => {
   assert.match(app, /Hvor kommer spørsmålene fra/);
   assert.match(app, /september 2025/);
   assert.match(app, /versjon 2\.0/);
+  assert.match(app, /Min veileder/);
+  assert.match(app, /HLR-metronom/);
+  assert.match(app, /100–120/);
+  assert.match(app, /Rask støtte/);
+  assert.match(app, /Ring 113/);
+  assert.match(app, /Bare til trening/);
 });
 
 test("spørsmålsbanken gir varierte femspørsmålsrunder", async () => {
@@ -45,9 +51,11 @@ test("appen har installasjon og anonym besøksmåling", async () => {
 });
 
 test("PWA-en cacher alle nødvendige lokale ressurser", async () => {
-  const [worker, app] = await Promise.all([read("sw.js"), read("app.js")]);
-  for (const asset of ["index.html", "styles.css", "app.js", "progress.js", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png", "icon-maskable-512.png"]) assert.match(worker, new RegExp(asset.replace(".", "\\.")));
+  const [worker, app, status] = await Promise.all([read("sw.js"), read("app.js"), read("status.json")]);
+  for (const asset of ["index.html", "styles.css", "app.js", "progress.js", "manifest.webmanifest", "status.json", "icon.svg", "icon-192.png", "icon-512.png", "icon-maskable-512.png"]) assert.match(worker, new RegExp(asset.replace(".", "\\.")));
   assert.match(worker, /fetch\(event\.request\)/);
   assert.match(app, /Hent siste versjon/);
   assert.match(app, /registration\.update/);
+  assert.equal(JSON.parse(status).version, "0.3.0");
+  assert.equal(JSON.parse(status).status, "operational");
 });
