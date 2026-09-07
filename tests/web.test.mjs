@@ -56,6 +56,6 @@ test("PWA-en cacher alle nødvendige lokale ressurser", async () => {
   assert.match(worker, /fetch\(event\.request\)/);
   assert.match(app, /Hent siste versjon/);
   assert.match(app, /registration\.update/);
-  assert.equal(JSON.parse(status).version, "0.3.0");
+  assert.equal(JSON.parse(status).version, "0.3.1");
   assert.equal(JSON.parse(status).status, "operational");
 });
