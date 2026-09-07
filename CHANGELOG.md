@@ -1,5 +1,9 @@
 # Endringslogg
 
+## [0.3.1] - 2026-09-07
+
+- Koblet appen til kontrollpanelets sentrale vedlikeholdsmodus med automatisk utløp og sikker fail-open.
+
 ## [0.3.0] - 2026-09-06
 
 - La inn tiltakskortet som en rask, animert og frakoblet XABCDE-visning med stor 113-knapp.

@@ -1,5 +1,5 @@
-const CACHE = "klarx-v6";
-const ASSETS = ["./", "./index.html", "./styles.css", "./app.js", "./progress.js", "./manifest.webmanifest", "./status.json", "./icon.svg", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png"];
+const CACHE = "klarx-v7";
+const ASSETS = ["./", "./index.html", "./styles.css", "./app.js", "./progress.js", "./maintenance-mode.js", "./manifest.webmanifest", "./status.json", "./icon.svg", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
