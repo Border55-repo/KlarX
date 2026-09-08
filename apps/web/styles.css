@@ -231,6 +231,32 @@ p { line-height: 1.55; }
 .timer-card { text-align: center; }
 .timer-card > strong { display: block; margin: .2rem 0 .6rem; color: var(--navy); font-size: clamp(3rem, 15vw, 5rem); font-variant-numeric: tabular-nums; letter-spacing: -.05em; }
 .timer-card .cta-row { justify-content: center; }
+.level-switch { display: flex; gap: .55rem; margin: .8rem 0; }
+.level-switch .button { flex: 1; }
+.scenario-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: .35rem; margin: 1rem 0; }
+.scenario-steps span { padding: .65rem .35rem; text-align: center; color: #9fc9dd; border: 1px solid #29465f; border-radius: 10px; background: #0d2237; font-size: .72rem; }
+.scenario-steps span.active { color: #071525; border-color: #7bd5ff; background: #7bd5ff; font-weight: 900; }
+.scenario-steps span.done { color: #dfffee; border-color: #2ca77a; background: #07563d; }
+.case-text { margin-bottom: 1rem; padding: 1rem; border-left: 5px solid var(--yellow); border-radius: 12px; background: rgba(116,85,5,.32); font-size: 1.08rem; line-height: 1.5; }
+.partner-grid { display: grid; gap: .8rem; }
+.marker-card summary { cursor: pointer; color: #7bd5ff; font-weight: 900; }
+.marker-card[open] { border-color: #f5cc57; }
+.marker-card p { padding-top: .8rem; line-height: 1.55; }
+.evaluation-list { display: grid; gap: .55rem; margin: .8rem 0; }
+.evaluation-list label { display: flex; gap: .7rem; align-items: center; padding: .75rem; border-radius: 12px; background: rgba(84,190,242,.11); }
+.evaluation-list input { width: 22px; height: 22px; }
+.readiness-card { margin-bottom: 1rem; padding: 1.25rem; border: 1px solid #357399; border-radius: 22px; background: #0d2237; }
+.readiness-card > strong { display: block; color: #7bd5ff; font-size: 3.4rem; }
+.history-list { display: grid; gap: .5rem; }
+.history-list div { display: grid; grid-template-columns: 6.5rem 1fr auto; gap: .6rem; padding: .7rem; border-radius: 10px; background: rgba(84,190,242,.09); }
+.history-list span { color: #afd3e4; }
+.center { text-align: center; }
+
+@media print {
+  .topbar, .bottom-nav, .siren-line, .toast, .button { display: none !important; }
+  body, main, .panel { color: #000 !important; background: #fff !important; }
+  .evaluation-list label { color: #000; border: 1px solid #aaa; background: #fff; }
+}
 
 .install-dialog { width: min(92vw, 440px); padding: 1.4rem; color: var(--ink); border: 1px solid rgba(95,207,255,.5); border-radius: 26px; background: white; box-shadow: 0 24px 80px rgba(0,0,0,.35); }
 .install-dialog::backdrop { background: rgba(3,18,31,.72); backdrop-filter: blur(4px); }
@@ -276,6 +302,7 @@ p { line-height: 1.55; }
   .mode-card { min-height: 175px; }
   .bottom-nav { left: 50%; width: min(560px, calc(100% - 2rem)); bottom: 1rem; min-height: 66px; transform: translateX(-50%); border: 1px solid rgba(18,58,86,.1); border-radius: 22px; box-shadow: var(--shadow); }
   .app-shell { padding-bottom: 100px; }
+  .partner-grid { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 699px) {
@@ -284,6 +311,10 @@ p { line-height: 1.55; }
   .action-card-head h1 { font-size: 2.4rem; }
   .action-card-head .emergency-call { min-width: 100px; }
   .coach-stats { grid-template-columns: repeat(2, 1fr); }
+  .scenario-steps { grid-template-columns: 1fr; }
+  .scenario-steps span { text-align: left; }
+  .history-list div { grid-template-columns: 1fr auto; }
+  .history-list div span:first-child { grid-column: 1 / -1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

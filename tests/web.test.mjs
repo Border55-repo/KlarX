@@ -38,7 +38,20 @@ test("appen har tiltak, varsling og trygg ansvarsfraskrivelse", async () => {
 test("spørsmålsbanken gir varierte femspørsmålsrunder", async () => {
   const app = await read("app.js");
   assert.ok((app.match(/\{ q: /g) || []).length >= 40);
-  assert.match(app, /slice\(0, 5\)/);
+  assert.match(app, /selectQuestions/);
+});
+
+test("appen har nye treningsformer uten eksamensmodus", async () => {
+  const [app, data, engine] = await Promise.all([read("app.js"), read("training-data.js"), read("training-engine.js")]);
+  assert.match(app, /Praktisk scenario/);
+  assert.match(app, /Finn feilen/);
+  assert.match(app, /Øv to sammen/);
+  assert.match(app, /Min utvikling/);
+  assert.match(app, /Felles vurdering/);
+  assert.match(app, /hemmelig markørinformasjon/i);
+  assert.match(engine, /Nybegynner/);
+  assert.match(engine, /Viderekommen/);
+  assert.doesNotMatch(`${app}${data}${engine}`, /eksamensmodus/i);
 });
 
 test("appen har installasjon og anonym besøksmåling", async () => {
@@ -52,10 +65,10 @@ test("appen har installasjon og anonym besøksmåling", async () => {
 
 test("PWA-en cacher alle nødvendige lokale ressurser", async () => {
   const [worker, app, status] = await Promise.all([read("sw.js"), read("app.js"), read("status.json")]);
-  for (const asset of ["index.html", "styles.css", "app.js", "progress.js", "manifest.webmanifest", "status.json", "icon.svg", "icon-192.png", "icon-512.png", "icon-maskable-512.png"]) assert.match(worker, new RegExp(asset.replace(".", "\\.")));
+  for (const asset of ["index.html", "styles.css", "app.js", "progress.js", "training-engine.js", "training-data.js", "manifest.webmanifest", "status.json", "icon.svg", "icon-192.png", "icon-512.png", "icon-maskable-512.png"]) assert.match(worker, new RegExp(asset.replace(".", "\\.")));
   assert.match(worker, /fetch\(event\.request\)/);
   assert.match(app, /Hent siste versjon/);
   assert.match(app, /registration\.update/);
-  assert.equal(JSON.parse(status).version, "0.3.1");
+  assert.equal(JSON.parse(status).version, "0.4.0");
   assert.equal(JSON.parse(status).status, "operational");
 });

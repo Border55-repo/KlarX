@@ -1,7 +1,7 @@
 {
   "name": "KlarX – førstehjelpstrener",
   "short_name": "KlarX",
-  "description": "Øv på XABCDE og KFØR med personlig veileder, HLR-metronom, opplesning, scenarioer og spill.",
+  "description": "Øv på XABCDE og KFØR med praktiske scenarioer, repetisjon, personlig veileder, HLR-metronom og spill.",
   "lang": "nb",
   "id": "./",
   "start_url": "./",
@@ -22,5 +22,6 @@
     { "name": "KFØR-trening", "short_name": "KFØR", "url": "./#kfor", "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }] },
     { "name": "HLR-metronom", "short_name": "HLR-takt", "url": "./#metronome", "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }] },
     { "name": "Min veileder", "short_name": "Veileder", "url": "./#coach", "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }] }
+    ,{ "name": "Praktisk scenario", "short_name": "Scenario", "url": "./#scenario", "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }] }
   ]
 }

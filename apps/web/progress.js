@@ -5,6 +5,12 @@ export const EMPTY_PROGRESS = Object.freeze({
   kforBest: 0,
   streak: 0,
   lastDay: "",
+  level: "beginner",
+  history: [],
+  reviewQueue: [],
+  scenarioRuns: 0,
+  errorRuns: 0,
+  partnerRuns: 0,
   stats: { answers: 0, correct: 0, quizRuns: 0, kforRuns: 0, misses: {} }
 });
 
@@ -34,6 +40,8 @@ export function createProgressStore(storage, key = "klarx-progress-v1") {
           ...EMPTY_PROGRESS,
           ...saved,
           learned: Array.isArray(saved.learned) ? saved.learned : [],
+          history: Array.isArray(saved.history) ? saved.history : [],
+          reviewQueue: Array.isArray(saved.reviewQueue) ? saved.reviewQueue : [],
           stats: { ...EMPTY_PROGRESS.stats, ...(saved.stats || {}), misses: { ...(saved.stats?.misses || {}) } }
         };
       } catch {
