@@ -42,6 +42,12 @@ Kontrollsenter kan overvåke offentlig appversjon og driftsstatus uten GitHub-to
 - 12 korte temaoppslag kan leses høyt.
 - Et interaktivt tiltakskort gir store X–E-knapper og direkte 113-handling, også frakoblet.
 - Min veileder foreslår neste øvelse ut fra den enkelte deltakerens lokale fremgang.
+- Praktiske scenarioforløp trener hele kjeden: sikre, undersøke, gjøre tiltak, varsle og revurdere.
+- Nybegynner- og viderekomment nivå tilpasser antall spørsmål og mengden hjelp.
+- Feiltemaer legges i en lokal repetisjonskø og kommer tilbake oftere.
+- «Finn feilen» trener oppdagelse av manglende tiltak.
+- To-personersmodus gir markøren skjult informasjon og laget vurderingspunkter.
+- Fremdriftssiden viser lokal historikk, sterke og svake temaer og KFØR-forberedelse.
 - HLR-metronomen trener en jevn takt mellom 100 og 120 kompresjoner per minutt; den vurderer ikke teknikk.
 - Appen kontrollerer automatisk om en ny versjon finnes når den er på nett. Manuell cache-refresh finnes under **Mer**.
 

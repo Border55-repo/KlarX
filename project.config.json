@@ -2,7 +2,7 @@
   "name": "xabcde-trener",
   "displayName": "KlarX – førstehjelpstrener",
   "target": "web",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "repository": "https://github.com/Border55-repo/KlarX",
   "siteUrl": "https://border55-repo.github.io/KlarX/",
   "statusUrl": "https://border55-repo.github.io/KlarX/status.json",

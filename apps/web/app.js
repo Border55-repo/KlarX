@@ -1,4 +1,6 @@
 import { createProgressStore, getCoachPlan } from "./progress.js";
+import { LEVELS, addHistory, readiness, recordReview, selectQuestions, weakSkills } from "./training-engine.js";
+import { errorCases, partnerCases, scenarioFlows, sourceReview } from "./training-data.js";
 
 const lessons = [
   { letter: "X", title: "Egensikkerhet", cue: "Se faren først", points: ["Sørg for egen sikkerhet og få oversikt.", "Stans livstruende stor blødning med én gang.", "Forebygg hypotermi – beskytt personen mot kulde, vind og vått underlag."] },
@@ -114,6 +116,9 @@ let audioContext = null;
 let compressionCount = 0;
 let metronomeBpm = 110;
 let metronomeRunning = false;
+let scenario = null;
+let errorGame = null;
+let partnerIndex = 0;
 
 function saveProgress() {
   progressStore.write(state);
@@ -152,6 +157,7 @@ function header(title, eyebrow = "KlarX") {
 
 function homeView() {
   const percent = Math.round((state.learned.length / lessons.length) * 100);
+  const ready = readiness(state);
   return `
     <section class="hero-card">
       <div class="streak">⚡ ${state.streak || 0} dagers øvingsrekke</div>
@@ -161,16 +167,19 @@ function homeView() {
       <div class="cta-row"><a class="button" href="#kfor">⚡ Start KFØR-trening</a><button class="button secondary" data-install>＋ Installer appen</button></div>
     </section>
     <section aria-labelledby="progress-title">
-      <div class="section-head"><h2 id="progress-title">Din fremdrift</h2><span class="tiny">Beste quiz: ${state.best}/5</span></div>
+      <div class="section-head"><h2 id="progress-title">Din fremdrift</h2><span class="tiny">${ready.label}: ${ready.score}%</span></div>
       <div class="progress-label"><span>${state.learned.length} av 6 bokstaver øvd</span><span>${percent}%</span></div>
       <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="6" aria-valuenow="${state.learned.length}"><div class="progress-fill" style="width:${percent}%"></div></div>
     </section>
     <section class="mode-grid" aria-label="Velg øvingsmåte">
       <a class="mode-card action" href="#action-card"><span class="mode-icon">X</span><span><strong>Tiltakskort</strong><p>Rask støtte i en skarp situasjon</p></span></a>
       <a class="mode-card coach" href="#coach"><span class="mode-icon">◎</span><span><strong>Min veileder</strong><p>Personlige råd fra din fremgang</p></span></a>
+      <a class="mode-card" href="#progress"><span class="mode-icon">↗</span><span><strong>Min utvikling</strong><p>Historikk, styrker og neste mål</p></span></a>
       <a class="mode-card kfor" href="#kfor"><span class="mode-icon">K</span><span><strong>KFØR-klar</strong><p>Scenarioer, oppgaver og instruktørmodus</p></span></a>
       <a class="mode-card" href="#learn"><span class="mode-icon">ABC</span><span><strong>Lær kortet</strong><p>Én bokstav om gangen</p></span></a>
       <a class="mode-card play" href="#play"><span class="mode-icon">▶</span><span><strong>Spill</strong><p>Fem raske valg</p></span></a>
+      <a class="mode-card kfor" href="#scenario"><span class="mode-icon">➜</span><span><strong>Praktisk scenario</strong><p>Fra skadested til revurdering</p></span></a>
+      <a class="mode-card play" href="#find-error"><span class="mode-icon">!</span><span><strong>Finn feilen</strong><p>Oppdag det som mangler</p></span></a>
       <a class="mode-card piksib" href="#piksib"><span class="mode-icon">P</span><span><strong>PIKSIB</strong><p>Vaktlederens huskeregel</p></span></a>
       <a class="mode-card values" href="#values"><span class="mode-icon">12</span><span><strong>Normalverdier</strong><p>Pust og hvilepuls</p></span></a>
     </section>
@@ -192,6 +201,9 @@ function kforView() {
       <a class="course-card sprint" href="#kfor-game"><span>⚡</span><strong>Scenario-sprint</strong><p>Fem situasjoner. Velg raskt og få forklaring.</p></a>
       <a class="course-card sequence" href="#sequence"><span>↕</span><strong>Rekkefølgejakten</strong><p>Finn hele undersøkelseskjeden uten hint.</p></a>
       <a class="course-card instructor" href="#instructor"><span>◉</span><strong>Instruktørmodus</strong><p>Gruppeoppgaver og en enkel 90-sekunders timer.</p></a>
+      <a class="course-card" href="#partner"><span>2</span><strong>Øv to sammen</strong><p>Egen markørtekst og vurderingspunkter.</p></a>
+      <a class="course-card" href="#scenario"><span>➜</span><strong>Praktisk scenarioflyt</strong><p>Sikre, undersøk, tiltak, varsle og revurder.</p></a>
+      <a class="course-card" href="#find-error"><span>!</span><strong>Finn feilen</strong><p>Oppdag manglende eller feil tiltak.</p></a>
       <a class="course-card" href="#coach"><span>◎</span><strong>Min veileder</strong><p>Få et råd basert på dine egne økter og svar.</p></a>
       <a class="course-card sprint" href="#metronome"><span>♥</span><strong>HLR-metronom</strong><p>Tren jevn kompresjonstakt mellom 100 og 120 per minutt.</p></a>
     </section>
@@ -205,7 +217,7 @@ function kforView() {
       <p class="eyebrow">Faggrunnlag</p>
       <h2>Hvor kommer spørsmålene fra?</h2>
       <p>Spørsmål og forklaringer bygger på <strong>«Kvalifisert førstehjelp – Deltakerhefte» (september 2025)</strong> og brukerens <strong>XABCDE-tiltakskort, PIKSIB og normalverdier (versjon 2.0)</strong>.</p>
-      <p class="tiny">Sist faglig kontrollert 6. september 2026. KlarX følges opp ved nye utgivelser, og kildeversjonen oppdateres når nytt materiale er kontrollert.</p>
+      <p class="tiny">Tiltakskort ${sourceReview.cardVersion}. Deltakerhefte ${sourceReview.handbookVersion}. Sist faglig kontrollert ${sourceReview.reviewedAt}. ${sourceReview.status}.</p>
       <a class="button ghost" href="https://github.com/Border55-repo/KlarX/blob/main/docs/SOURCES.md" target="_blank" rel="noreferrer">Se full kildeoversikt ↗</a>
     </section>`;
 }
@@ -234,6 +246,8 @@ function coachView() {
   const plan = getCoachPlan(state);
   const stats = state.stats || {};
   const accuracy = stats.answers ? Math.round((stats.correct / stats.answers) * 100) : 0;
+  const ready = readiness(state);
+  const patterns = weakSkills(state);
   const displayName = state.name ? ` for ${escapeHtml(state.name)}` : "";
   return `
     ${header(`Min veileder${displayName}`, "Personlig og lokalt")}
@@ -241,9 +255,9 @@ function coachView() {
     <form class="profile-form" id="profile-form"><label for="profile-name">Hva skal veilederen kalle deg?</label><div><input id="profile-name" maxlength="30" value="${escapeAttr(state.name || "")}" placeholder="Fornavn eller kallenavn"><button class="button" type="submit">Lagre</button></div></form>
     <section class="coach-hero"><p class="eyebrow">Anbefalt neste økt</p><h2>${plan.title}</h2><p>${plan.reason}</p><a class="button" href="${plan.href}">${plan.action}</a></section>
     <section class="coach-stats" aria-label="Din øvingsstatistikk">
-      <div><strong>${stats.answers || 0}</strong><span>svar</span></div><div><strong>${accuracy}%</strong><span>riktig</span></div><div><strong>${state.streak || 0}</strong><span>dager på rad</span></div><div><strong>${(stats.quizRuns || 0) + (stats.kforRuns || 0)}</strong><span>fullførte runder</span></div>
+      <div><strong>${stats.answers || 0}</strong><span>svar</span></div><div><strong>${accuracy}%</strong><span>riktig</span></div><div><strong>${state.streak || 0}</strong><span>dager på rad</span></div><div><strong>${ready.score}%</strong><span>KFØR-forberedt</span></div>
     </section>
-    <section class="panel"><h2>Veilederens fokus</h2>${plan.weakTopic ? `<p>Du har mest å hente på <strong>${plan.weakTopic}</strong>. Feil brukes bare for å velge neste øvelse.</p>` : `<p>Fullfør flere spørsmål, så finner veilederen temaene som bør repeteres.</p>`}
+    <section class="panel"><h2>Veilederens fokus</h2>${patterns.length ? `<ul class="check-list">${patterns.map((item) => `<li><strong>${item.label}</strong> (${item.count} feil)</li>`).join("")}</ul>` : `<p>Fullfør flere spørsmål, så finner veilederen temaene som bør repeteres.</p>`}
       <div class="coach-links"><a href="#metronome">♥ Tren HLR-takt</a><a href="#sequence">↕ Test rekkefølgen</a><a href="#kfor-game">⚡ Ta fem scenarioer</a></div></section>`;
 }
 
@@ -283,8 +297,8 @@ function learnView() {
 
 function startQuiz(mode = "xabcde") {
   const source = mode === "kfor" ? kforQuestions : questions;
-  const shuffled = [...source].sort(() => Math.random() - .5).slice(0, 5);
-  quiz = { mode, items: shuffled, index: 0, score: 0, answered: false, recorded: false };
+  const items = selectQuestions(source.map((item) => ({ ...item, topic: questionTopic(item) })), state, state.level);
+  quiz = { mode, items, index: 0, score: 0, answered: false, recorded: false };
   registerActivity();
 }
 
@@ -294,13 +308,14 @@ function playView(mode = "xabcde") {
   const item = quiz.items[quiz.index];
   return `
     ${header(mode === "kfor" ? "Scenario-sprint" : "Rask runde", mode === "kfor" ? "KFØR-spill" : "Spill")}
+    <div class="level-switch" role="group" aria-label="Velg nivå">${Object.entries(LEVELS).map(([key, value]) => `<button class="button ${state.level === key ? "" : "ghost"}" data-level="${key}">${value.label}</button>`).join("")}</div>
     <div class="progress-label"><span>Spørsmål ${quiz.index + 1} av ${quiz.items.length}</span><span>${quiz.score} poeng</span></div>
     <div class="progress-track"><div class="progress-fill" style="width:${(quiz.index / quiz.items.length) * 100}%"></div></div>
     <article class="quiz-card" style="margin-top:1rem">
-      <div class="quiz-meta"><span>Velg ett svar</span><button class="icon-button" data-speak="${escapeAttr(item.q)}" aria-label="Les spørsmålet høyt">◖)))</button></div>
+      <div class="quiz-meta"><span>Velg ett svar · ${LEVELS[state.level]?.label || "Nybegynner"}</span><button class="icon-button" data-speak="${escapeAttr(item.q)}" aria-label="Les spørsmålet høyt">◖)))</button></div>
       <h2>${item.q}</h2>
       <div class="answers">${item.options.map((option, index) => `<button class="answer" data-answer="${index}">${option}</button>`).join("")}</div>
-      <div class="feedback" id="feedback" aria-live="polite"><span class="muted">Svaret forklares etter at du velger.</span></div>
+      <div class="feedback" id="feedback" aria-live="polite"><span class="muted">${LEVELS[state.level]?.hint ? "Svaret forklares etter at du velger." : "Ingen hint på viderekommen nivå. Forklaringen vises etter svaret."}</span></div>
       <button class="button full" id="next-question" style="margin-top:.7rem" disabled>${quiz.index === quiz.items.length - 1 ? "Se resultat" : "Neste spørsmål"}</button>
     </article>`;
 }
@@ -314,12 +329,13 @@ function resultView() {
   }
   if (quiz.mode === "kfor") state.kforBest = Math.max(state.kforBest || 0, quiz.score);
   else state.best = Math.max(state.best, quiz.score);
+  state.history = addHistory(state, quiz.mode === "kfor" ? "Scenario-sprint" : "Quiz", `${quiz.score}/${quiz.items.length}`);
   saveProgress();
   const message = quiz.score === 5 ? "Full kontroll!" : quiz.score >= 3 ? "Godt jobbet!" : "Ny runde gir ny læring.";
   return `
     ${header("Runden er ferdig", "Resultat")}
     <section class="quiz-card" style="text-align:center">
-      <div class="score-burst">${quiz.score}/5</div>
+      <div class="score-burst">${quiz.score}/${quiz.items.length}</div>
       <h2>${message}</h2>
       <p class="muted">Hvert forsøk gjør huskeregelen litt lettere å hente frem.</p>
       <div class="cta-row" style="justify-content:center">
@@ -351,7 +367,51 @@ function instructorView() {
     </article>
     <section class="timer-card"><p class="eyebrow">Øvingstimer</p><strong id="timer-number">01:30</strong><p>Bruk timeren til varslingsøvelser eller korte lagdiskusjoner.</p>
       <div class="cta-row"><button class="button" id="timer-start">Start 90 sek</button><button class="button ghost" id="timer-reset">Nullstill</button></div>
+    </section>
+    <section class="panel"><h2>Felles vurdering</h2><p class="muted">Kryss av sammen etter øvelsen. Ingen personopplysninger lagres.</p>
+      <div class="evaluation-list">${["Egensikkerhet før kontakt", "Systematisk XABCDE", "Tiltak utført ved funn", "Tydelig varsling og lokasjon", "Revurdering etter tiltak", "Rolig samarbeid og kommunikasjon"].map((item) => `<label><input type="checkbox"> ${item}</label>`).join("")}</div>
+      <button class="button ghost full" id="print-evaluation">Skriv ut evalueringsark</button>
     </section>`;
+}
+
+function scenarioView() {
+  if (!scenario) scenario = { caseIndex: Math.floor(Math.random() * scenarioFlows.length), step: 0, score: 0, answered: false };
+  const flow = scenarioFlows[scenario.caseIndex];
+  if (scenario.step >= flow.steps.length) {
+    if (!scenario.recorded) {
+      scenario.recorded = true;
+      state.scenarioRuns = (state.scenarioRuns || 0) + 1;
+      state.history = addHistory(state, "Praktisk scenario", `${scenario.score}/${flow.steps.length}`);
+      saveProgress();
+    }
+    return `${header("Scenario fullført", flow.title)}<section class="quiz-card center"><div class="score-burst">${scenario.score}/${flow.steps.length}</div><h2>Hele pasientforløpet er gjennomført</h2><p>Du har trent på å sikre, undersøke, gjøre tiltak, varsle og revurdere.</p><button class="button" id="restart-scenario">Nytt scenario</button></section>`;
+  }
+  const step = flow.steps[scenario.step];
+  return `${header(flow.title, "Praktisk scenario")}
+    <p class="lead">${flow.intro}</p>
+    <div class="scenario-steps">${flow.steps.map((item, index) => `<span class="${index < scenario.step ? "done" : index === scenario.step ? "active" : ""}">${index + 1}. ${item.title}</span>`).join("")}</div>
+    <article class="quiz-card"><p class="eyebrow">${step.title}</p><h2>${step.prompt}</h2><div class="answers">${step.options.map((option, index) => `<button class="answer ${scenario.answered && index === step.answer ? "correct" : ""} ${scenario.answered && index === scenario.selected && index !== step.answer ? "wrong" : ""}" data-scenario-answer="${index}" ${scenario.answered ? "disabled" : ""}>${option}</button>`).join("")}</div><div class="feedback" id="scenario-feedback">${scenario.answered ? `<strong>${scenario.selected === step.answer ? "Riktig prioritering." : "Ikke helt."}</strong>${step.feedback}` : "Velg handling før forklaringen vises."}</div><button class="button full" id="scenario-next" ${scenario.answered ? "" : "disabled"}>Neste trinn</button></article>`;
+}
+
+function findErrorView() {
+  if (!errorGame) errorGame = { index: Math.floor(Math.random() * errorCases.length), answered: false };
+  const item = errorCases[errorGame.index];
+  return `${header("Finn feilen", item.title)}<p class="lead">Les gjennomføringen og finn den viktigste feilen.</p><article class="quiz-card"><div class="case-text">${item.text}</div><div class="answers">${item.options.map((option, index) => `<button class="answer ${errorGame.answered && index === item.answer ? "correct" : ""} ${errorGame.answered && index === errorGame.selected && index !== item.answer ? "wrong" : ""}" data-error-answer="${index}" ${errorGame.answered ? "disabled" : ""}>${option}</button>`).join("")}</div><div class="feedback" id="error-feedback">${errorGame.answered ? `<strong>${errorGame.selected === item.answer ? "Riktig!" : "Ikke helt."}</strong>${item.why}` : "Forklaringen vises etter valget."}</div><button class="button full" id="next-error" ${errorGame.answered ? "" : "disabled"}>Ny feil</button></article>`;
+}
+
+function partnerView() {
+  const item = partnerCases[partnerIndex % partnerCases.length];
+  return `${header("Øv to sammen", item.title)}<p class="lead">Én er førstehjelper og én er markør. Markøren åpner sin skjulte informasjon og holder skjermen for seg selv.</p><section class="partner-grid"><article class="panel"><p class="eyebrow">Til førstehjelperen</p><h2>Oppdrag</h2><p>${item.publicText}</p></article><details class="panel marker-card"><summary>Vis hemmelig markørinformasjon</summary><p>${item.marker}</p></details></section><section class="panel"><h2>Felles evaluering etterpå</h2><div class="evaluation-list">${item.goals.map((goal) => `<label><input type="checkbox"> ${goal}</label>`).join("")}</div><button class="button full" id="next-partner">Ny to-personersøvelse</button></section>`;
+}
+
+function progressView() {
+  const ready = readiness(state);
+  const patterns = weakSkills(state);
+  const history = [...(state.history || [])].reverse();
+  return `${header("Min utvikling", "Fremdrift")}
+    <section class="readiness-card"><p class="eyebrow">KFØR-forberedelse</p><strong>${ready.score}%</strong><h2>${ready.label}</h2><div class="progress-track"><div class="progress-fill" style="width:${ready.score}%"></div></div><p>${ready.learned}/6 bokstaver øvd · ${ready.rounds} spørsmålsrunder · ${ready.accuracy}% riktige svar</p></section>
+    <section class="panel"><h2>Temaer å jobbe videre med</h2>${patterns.length ? `<ul class="check-list">${patterns.map((item) => `<li>${item.label}</li>`).join("")}</ul>` : "<p>Ingen tydelige svakheter ennå. Ta en runde for å få mer presise råd.</p>"}</section>
+    <section class="panel"><h2>Siste aktiviteter</h2>${history.length ? `<div class="history-list">${history.slice(0, 10).map((item) => `<div><span>${item.date}</span><strong>${item.activity}</strong><span>${item.score || "Fullført"}</span></div>`).join("")}</div>` : "<p>Ingen registrerte økter ennå.</p>"}</section>`;
 }
 
 function piksibView() {
@@ -410,6 +470,7 @@ function moreView() {
       <p><a href="https://www.rodekors.no/forstehjelp/" target="_blank" rel="noreferrer">Les offisiell førstehjelpsinformasjon hos Røde Kors ↗</a></p>
       <p><a href="https://github.com/Border55-repo/KlarX/blob/main/docs/SOURCES.md" target="_blank" rel="noreferrer">Se fagkilder og kildeversjoner ↗</a></p>
     </section>
+    <a class="button full" href="#progress">Se hele utviklingen min</a>
     <button class="button ghost full" id="reset-progress">Nullstill min fremdrift</button>`;
 }
 
@@ -422,6 +483,7 @@ function escapeHtml(value) {
 }
 
 function questionTopic(item) {
+  if (item.topic) return item.topic;
   const text = `${item.q} ${item.why}`.toLowerCase();
   if (/hlr|hjertestarter|kompresjon|30:2|agonal/.test(text)) return "HLR og hjertestarter";
   if (/luftvei|hoste|bukstøt|spebarn|fremmedlegeme/.test(text)) return "A – Luftvei";
@@ -435,7 +497,7 @@ function questionTopic(item) {
 
 function getRoute() {
   const route = location.hash.replace("#", "") || "home";
-  return ["home", "action-card", "coach", "metronome", "learn", "play", "piksib", "values", "kfor", "kfor-game", "sequence", "instructor", "more"].includes(route) ? route : "home";
+  return ["home", "action-card", "coach", "progress", "metronome", "learn", "play", "piksib", "values", "kfor", "kfor-game", "sequence", "scenario", "find-error", "partner", "instructor", "more"].includes(route) ? route : "home";
 }
 
 function render() {
@@ -444,9 +506,9 @@ function render() {
   clearInterval(timerId);
   timerId = null;
   if (route === "home") registerActivity();
-  const views = { home: homeView, "action-card": actionCardView, coach: coachView, metronome: metronomeView, learn: learnView, play: () => playView("xabcde"), piksib: piksibView, values: valuesView, kfor: kforView, "kfor-game": () => playView("kfor"), sequence: sequenceView, instructor: instructorView, more: moreView };
+  const views = { home: homeView, "action-card": actionCardView, coach: coachView, progress: progressView, metronome: metronomeView, learn: learnView, play: () => playView("xabcde"), piksib: piksibView, values: valuesView, kfor: kforView, "kfor-game": () => playView("kfor"), sequence: sequenceView, scenario: scenarioView, "find-error": findErrorView, partner: partnerView, instructor: instructorView, more: moreView };
   document.querySelector("#main").innerHTML = views[route]();
-  const navRoute = ["coach", "metronome", "kfor-game", "sequence", "instructor"].includes(route) ? "kfor" : ["action-card", "learn", "piksib", "values"].includes(route) ? "learn" : route;
+  const navRoute = ["coach", "progress", "metronome", "kfor-game", "sequence", "scenario", "find-error", "partner", "instructor"].includes(route) ? "kfor" : ["action-card", "learn", "piksib", "values"].includes(route) ? "learn" : route;
   document.querySelectorAll("[data-nav]").forEach((link) => link.classList.toggle("active", link.dataset.nav === navRoute));
   bindActions(route);
   updateInstallButtons();
@@ -495,6 +557,35 @@ function bindActions(route) {
   });
   document.querySelectorAll("[data-bpm]").forEach((button) => button.addEventListener("click", () => setMetronomeBpm(Number(button.dataset.bpm))));
   document.querySelector("#metronome-toggle")?.addEventListener("click", toggleMetronome);
+  document.querySelectorAll("[data-level]").forEach((button) => button.addEventListener("click", () => {
+    state.level = button.dataset.level in LEVELS ? button.dataset.level : "beginner";
+    quiz = null;
+    saveProgress();
+    render();
+  }));
+  document.querySelectorAll("[data-scenario-answer]").forEach((button) => button.addEventListener("click", () => {
+    const flow = scenarioFlows[scenario.caseIndex];
+    const step = flow.steps[scenario.step];
+    scenario.selected = Number(button.dataset.scenarioAnswer);
+    scenario.answered = true;
+    if (scenario.selected === step.answer) scenario.score += 1;
+    render();
+  }));
+  document.querySelector("#scenario-next")?.addEventListener("click", () => { scenario.step += 1; scenario.answered = false; scenario.selected = null; render(); });
+  document.querySelector("#restart-scenario")?.addEventListener("click", () => { scenario = null; render(); });
+  document.querySelectorAll("[data-error-answer]").forEach((button) => button.addEventListener("click", () => {
+    const item = errorCases[errorGame.index];
+    errorGame.selected = Number(button.dataset.errorAnswer);
+    errorGame.answered = true;
+    state.errorRuns = (state.errorRuns || 0) + 1;
+    state.reviewQueue = recordReview(state, item.topic, errorGame.selected === item.answer);
+    state.history = addHistory(state, "Finn feilen", errorGame.selected === item.answer ? "Riktig" : "Til repetisjon");
+    saveProgress();
+    render();
+  }));
+  document.querySelector("#next-error")?.addEventListener("click", () => { errorGame = { index: (errorGame.index + 1) % errorCases.length, answered: false }; render(); });
+  document.querySelector("#next-partner")?.addEventListener("click", () => { partnerIndex = (partnerIndex + 1) % partnerCases.length; state.partnerRuns = (state.partnerRuns || 0) + 1; state.history = addHistory(state, "To-personersøvelse"); saveProgress(); render(); });
+  document.querySelector("#print-evaluation")?.addEventListener("click", () => window.print());
 }
 
 function updateMetronomeUi() {
@@ -638,6 +729,7 @@ function answerQuestion(selected) {
     const topic = questionTopic(item);
     state.stats.misses[topic] = (state.stats.misses[topic] || 0) + 1;
   }
+  state.reviewQueue = recordReview(state, questionTopic(item), selected === item.answer);
   saveProgress();
   document.querySelector("#feedback").innerHTML = `<strong>${selected === item.answer ? "Riktig!" : "Ikke helt."}</strong>${item.why}`;
   document.querySelector("#next-question").disabled = false;

@@ -1,5 +1,17 @@
 # Endringslogg
 
+## [0.4.0] - 2026-09-08
+
+- La til praktiske scenarioforløp fra sikring av skadestedet til revurdering.
+- La til nivåene nybegynner og viderekommen. Ingen eksamensmodus er inkludert.
+- La til målrettet repetisjon av feiltemaer og mer presise råd fra veilederen.
+- La til spillet «Finn feilen» med faglige forklaringer.
+- La til to-personersøvelser med skjult markørinformasjon.
+- Utvidet instruktørmodus med felles evalueringsskjema og utskrift.
+- La til egen utviklingsside med forberedelsesgrad, svakheter og lokal øvingshistorikk.
+- Flyttet nye treningsdata og beregninger til egne moduler og utvidet testdekningen.
+- Gjorde faglig kontrollstatus og kildeversjoner mer synlige.
+
 ## [0.3.1] - 2026-09-07
 
 - Koblet appen til kontrollpanelets sentrale vedlikeholdsmodus med automatisk utløp og sikker fail-open.
