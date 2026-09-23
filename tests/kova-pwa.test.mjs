@@ -247,3 +247,13 @@ test("KOVA PWA accessibility includes skip navigation focus and reduced motion",
   assert.ok(css.includes(":focus-visible"));
   assert.ok(css.includes("prefers-reduced-motion"));
 });
+
+
+test("KOVA PWA consumes Bridge 2.0 capability contract", async () => {
+  const html = await readFile("apps/kova/index.html", "utf8");
+  const app = await readFile("apps/kova/app.js", "utf8");
+  assert.ok(html.includes("Web / iPhone PWA 2.0"));
+  assert.ok(app.includes("bridgeApiVersion"));
+  assert.ok(app.includes("bridgeCapabilities"));
+  assert.ok(app.includes("indexResult.value.apiVersion"));
+});
