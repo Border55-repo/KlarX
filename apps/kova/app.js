@@ -75,7 +75,8 @@ async function firestoreClient(){
         db:firestoreModule.getFirestore(firebaseApp),
         doc:firestoreModule.doc,
         setDoc:firestoreModule.setDoc,
-        serverTimestamp:firestoreModule.serverTimestamp
+        serverTimestamp:firestoreModule.serverTimestamp,
+        getDoc:firestoreModule.getDoc
       };
     })().catch(error=>{
       firestoreClientPromise=null;
@@ -137,6 +138,34 @@ async function syncPushOrganizations(){
     }
   }catch(error){
     console.warn("Kunne ikke synkronisere push-korps",error);
+  }
+}
+
+async function checkRemoteCacheEpoch(){
+  try{
+    const f=await firestoreClient();
+    const snap=await f.getDoc(f.doc(f.db,"publicConfig","pwa"));
+    if(!snap.exists())return false;
+    const epoch=Number(snap.data().cacheEpoch||0);
+    if(!epoch)return false;
+    const previous=Number(localStorage.getItem("kova.pwa.cacheEpoch")||0);
+    if(!previous){
+      localStorage.setItem("kova.pwa.cacheEpoch",String(epoch));
+      return false;
+    }
+    if(epoch<=previous)return false;
+
+    localStorage.setItem("kova.pwa.cacheEpoch",String(epoch));
+    const keys=await caches.keys();
+    await Promise.all(keys.filter(k=>k.startsWith("kova-pwa-")).map(k=>caches.delete(k)));
+    const registration=await navigator.serviceWorker.getRegistration();
+    try{await registration?.update()}catch{}
+    sessionStorage.setItem("kova.pwa.remoteCacheEpoch",String(epoch));
+    location.reload();
+    return true;
+  }catch(error){
+    console.warn("Kunne ikke sjekke fjernstyrt PWA-cache",error);
+    return false;
   }
 }
 
@@ -545,6 +574,8 @@ $("notificationBtn").onclick=toggleNotifications;
 
 let lastForegroundRefresh=0;
 async function refreshOnForeground(){
+  const reloading=await checkRemoteCacheEpoch();
+  if(reloading)return;
   const now=Date.now();
   if(now-lastForegroundRefresh>60000){
     lastForegroundRefresh=now;
@@ -590,6 +621,8 @@ if("serviceWorker" in navigator){
   updateConnection();
   try{
     await loadOrganizations();
+    const reloading=await checkRemoteCacheEpoch();
+    if(reloading)return;
     await loadEvents();
     await repairPushRegistration();
     await refreshNotificationUi();
