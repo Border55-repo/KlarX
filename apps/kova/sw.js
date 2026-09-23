@@ -1,4 +1,4 @@
-const CACHE="kova-pwa-v12";
+const CACHE="kova-pwa-v13";
 const SHELL=["./","./index.html","./styles.css","./app.js","./manifest.webmanifest","./icon.svg","./firebase-web-config.json"];
 
 self.addEventListener("install",event=>{
@@ -34,12 +34,21 @@ self.addEventListener("fetch",event=>{
   }
   const isData=url.hostname==="raw.githubusercontent.com" && url.pathname.includes("/bridge/data/");
   if(isData){
+    const cacheUrl=new URL(event.request.url);
+    cacheUrl.searchParams.delete("ts");
+    const cacheKey=new Request(cacheUrl.toString(),{
+      method:"GET",
+      headers:event.request.headers,
+      mode:event.request.mode,
+      credentials:event.request.credentials,
+      redirect:event.request.redirect
+    });
     event.respondWith(
       fetch(event.request).then(response=>{
         const copy=response.clone();
-        caches.open(CACHE).then(cache=>cache.put(event.request,copy));
+        caches.open(CACHE).then(cache=>cache.put(cacheKey,copy));
         return response;
-      }).catch(()=>caches.match(event.request))
+      }).catch(()=>caches.match(cacheKey))
     );
     return;
   }
