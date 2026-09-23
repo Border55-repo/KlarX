@@ -273,6 +273,51 @@ function updateTypes(){
   state.type=types.includes(current) ? current : "";
   typeSelect.value=state.type;
 }
+function upcomingEvents(){
+  return state.events
+    .filter(event=>event.dateIso && dateInRange(event.dateIso,3650))
+    .sort((a,b)=>(a.dateIso+(eventTime(a)||"99:99")).localeCompare(b.dateIso+(eventTime(b)||"99:99")));
+}
+
+function renderMiniList(containerId,events){
+  const container=$(containerId);
+  container.innerHTML="";
+  for(const event of events.slice(0,4)){
+    const button=document.createElement("button");
+    button.className="mini-event";
+    const title=document.createElement("strong");
+    title.textContent=event.description||"KOVA-aktivitet";
+    const meta=document.createElement("span");
+    meta.textContent=[event.dateLabel,displayTime(event.time)].filter(Boolean).join(" • ");
+    button.append(title,meta);
+    button.onclick=()=>openDetail(event);
+    container.appendChild(button);
+  }
+}
+
+function renderEverydayDashboard(){
+  const upcoming=upcomingEvents();
+  const next=upcoming[0]||null;
+  const nextCard=$("nextShiftCard");
+  nextCard.classList.toggle("hidden",!next);
+  if(next){
+    $("nextShiftTitle").textContent=next.description||"KOVA-aktivitet";
+    $("nextShiftMeta").textContent=[
+      next.dateLabel,
+      displayTime(next.time),
+      next.orgName||orgName(next.orgCode)
+    ].filter(Boolean).join(" • ");
+    $("nextShiftButton").onclick=()=>openDetail(next);
+  }
+
+  const week=upcoming.filter(event=>dateInRange(event.dateIso,7));
+  const later=upcoming.filter(event=>!dateInRange(event.dateIso,7) && dateInRange(event.dateIso,30));
+  $("weekCount").textContent=`${week.length} ${week.length===1?"vakt":"vakter"}`;
+  $("laterCount").textContent=`${later.length} ${later.length===1?"vakt":"vakter"}`;
+  renderMiniList("weekEvents",week);
+  renderMiniList("laterEvents",later);
+}
+
 function filteredEvents(){
   const q=state.search.trim().toLowerCase();
   return state.events.filter(event=>{
@@ -290,6 +335,7 @@ function render(){
   const list=filteredEvents();
   $("eventCount").textContent=list.length;
   emptyEl.classList.toggle("hidden",list.length!==0);
+  renderEverydayDashboard();
   const multi=state.view==="followed";
 
   for(const event of list){
@@ -376,7 +422,7 @@ async function loadFollowed(){
 }
 async function loadFavorites(){
   const codes=[...new Set([...state.favorites].map(key=>key.split("|")[0]).filter(Boolean))];
-  await loadMany(codes,"Mine aktiviteter","Ingen favoritter er lagret ennå");
+  await loadMany(codes,"Mine vakter","Ingen favorittvakter er lagret ennå");
 }
 async function loadEvents(){
   statusText.textContent="Oppdaterer…";
@@ -497,12 +543,24 @@ $("calendarBtn").onclick=async()=>{if(state.selected)await addToCalendar(state.s
 $("shareBtn").onclick=async()=>{if(state.selected)await shareEvent(state.selected)};
 $("notificationBtn").onclick=toggleNotifications;
 
-window.addEventListener("online",()=>{updateConnection();loadEvents();repairPushOnResume()});
+let lastForegroundRefresh=0;
+async function refreshOnForeground(){
+  const now=Date.now();
+  if(now-lastForegroundRefresh>60000){
+    lastForegroundRefresh=now;
+    await loadEvents();
+  }
+  await repairPushOnResume();
+}
+window.addEventListener("online",()=>{updateConnection();refreshOnForeground()});
 window.addEventListener("offline",updateConnection);
-window.addEventListener("focus",repairPushOnResume);
+window.addEventListener("focus",refreshOnForeground);
 document.addEventListener("visibilitychange",()=>{
-  if(document.visibilityState==="visible") repairPushOnResume();
+  if(document.visibilityState==="visible") refreshOnForeground();
 });
+setInterval(()=>{
+  if(document.visibilityState==="visible" && navigator.onLine) loadEvents();
+},5*60*1000);
 
 let installPrompt=null;
 window.addEventListener("beforeinstallprompt",event=>{
