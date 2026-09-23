@@ -81,3 +81,20 @@ test("KOVA PWA supports remote admin cache generation", async () => {
   assert.ok(app.includes('"publicConfig","pwa"'));
   assert.ok(app.includes("caches.keys()"));
 });
+
+
+test("KOVA Admin JavaScript has valid syntax", () => {
+  const result = spawnSync(process.execPath, ["--check", "apps/kova/admin/app.js"], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+});
+
+test("KOVA Admin contains secure first-login and cache controls", async () => {
+  const html = await readFile("apps/kova/admin/index.html", "utf8");
+  const app = await readFile("apps/kova/admin/app.js", "utf8");
+  assert.ok(html.includes("Superuser"));
+  assert.ok(html.includes("Bytt midlertidig passord"));
+  assert.ok(html.includes("Publiser ny PWA-cache"));
+  assert.ok(app.includes("updatePassword"));
+  assert.ok(app.includes("mustChangePassword"));
+  assert.ok(app.includes('"publicConfig","pwa"'));
+});
