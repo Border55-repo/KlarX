@@ -1,4 +1,4 @@
-const CACHE="kova-pwa-v11";
+const CACHE="kova-pwa-v12";
 const SHELL=["./","./index.html","./styles.css","./app.js","./manifest.webmanifest","./icon.svg","./firebase-web-config.json"];
 
 self.addEventListener("install",event=>{
@@ -21,6 +21,17 @@ self.addEventListener("activate",event=>{
 self.addEventListener("fetch",event=>{
   if(event.request.method!=="GET")return;
   const url=new URL(event.request.url);
+  const isAdmin=url.origin===self.location.origin && url.pathname.includes("/kova/admin/");
+  if(isAdmin){
+    event.respondWith(
+      fetch(event.request).then(response=>{
+        const copy=response.clone();
+        caches.open(CACHE).then(cache=>cache.put(event.request,copy));
+        return response;
+      }).catch(()=>caches.match(event.request))
+    );
+    return;
+  }
   const isData=url.hostname==="raw.githubusercontent.com" && url.pathname.includes("/bridge/data/");
   if(isData){
     event.respondWith(
