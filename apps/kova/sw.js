@@ -38,9 +38,47 @@ self.addEventListener("fetch",event=>{
 
 self.addEventListener("notificationclick",event=>{
   event.notification.close();
+  const data=event.notification.data||{};
+  const params=new URLSearchParams();
+  if(data.organization)params.set("org",data.organization);
+  if(data.eventId)params.set("event",data.eventId);
+  const target="./"+(params.toString()?"?"+params.toString():"");
   event.waitUntil(clients.matchAll({type:"window",includeUncontrolled:true}).then(list=>{
     const existing=list.find(client=>"focus" in client);
-    if(existing)return existing.focus();
-    return clients.openWindow("./");
+    if(existing){
+      existing.postMessage({type:"notificationclick",organization:data.organization||"",eventId:data.eventId||""});
+      return existing.focus();
+    }
+    return clients.openWindow(target);
   }));
+});
+
+
+self.addEventListener("push",event=>{
+  let payload={};
+  try{payload=event.data?.json()||{}}catch{payload={body:event.data?.text()||""}}
+  const eventData=payload.event||{};
+  const title=payload.title||"KOVA Companion";
+  const options={
+    body:payload.body||"Ny KOVA-oppdatering",
+    icon:"./icon.svg",
+    badge:"./icon.svg",
+    tag:payload.changeId||undefined,
+    renotify:false,
+    data:{
+      organization:payload.organization||"",
+      eventId:eventData.id||"",
+      kind:payload.kind||"",
+      sourceUrl:eventData.sourceUrl||""
+    }
+  };
+  event.waitUntil(self.registration.showNotification(title,options));
+});
+
+self.addEventListener("pushsubscriptionchange",event=>{
+  event.waitUntil(
+    self.clients.matchAll({type:"window",includeUncontrolled:true}).then(list=>{
+      for(const client of list)client.postMessage({type:"pushsubscriptionchange"});
+    })
+  );
 });
