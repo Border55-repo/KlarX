@@ -1,4 +1,4 @@
-const CACHE="kova-pwa-v5";
+const CACHE="kova-pwa-v6";
 const SHELL=["./","./index.html","./styles.css","./app.js","./manifest.webmanifest","./icon.svg","./firebase-web-config.json"];
 
 self.addEventListener("install",event=>{
@@ -7,8 +7,15 @@ self.addEventListener("install",event=>{
 });
 
 self.addEventListener("activate",event=>{
-  event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));
-  self.clients.claim();
+  event.waitUntil((async()=>{
+    const keys=await caches.keys();
+    await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));
+    await self.clients.claim();
+    const windows=await self.clients.matchAll({type:"window",includeUncontrolled:true});
+    for(const client of windows){
+      client.postMessage({type:"pwa-updated"});
+    }
+  })());
 });
 
 self.addEventListener("fetch",event=>{
