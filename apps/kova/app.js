@@ -677,7 +677,7 @@ function updateReminderUi(message=""){
     $("reminderHint").textContent="Legg vakten til Mine vakter først.";
   }else if(!hasTime){
     $("reminderHint").textContent="KOVA må ha klokkeslett før push-påminnelse kan planlegges.";
-  }else if(Notification.permission==="granted"&&localStorage.getItem("kova.pwa.pushRegisteredAt")){
+  }else if(pushSupported()&&Notification.permission==="granted"&&localStorage.getItem("kova.pwa.pushRegisteredAt")){
     $("reminderHint").textContent="Push-påminnelse er koblet til Bridge og tas også med i kalenderfilen.";
   }else{
     $("reminderHint").textContent="Valget lagres og tas med i kalender. Aktiver varsler for push-påminnelse.";
