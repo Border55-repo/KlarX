@@ -53,3 +53,10 @@ test("KOVA PWA cache-busts fresh KOVA data requests", async () => {
   assert.ok(app.includes("ts=1790163677805") || app.includes("Date.now()"));
   assert.ok(app.includes('cache:"no-store"'));
 });
+
+
+test("KOVA PWA shows project owner information", async () => {
+  const html = await readFile("apps/kova/index.html", "utf8");
+  assert.ok(html.includes("Prosjekteier: Julian Nordli"));
+  assert.ok(html.includes("ikke en offisiell Røde Kors-app"));
+});
