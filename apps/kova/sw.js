@@ -1,4 +1,4 @@
-const CACHE="kova-pwa-v14";
+const CACHE="kova-pwa-v15";
 const SHELL=["./","./index.html","./styles.css","./app.js","./manifest.webmanifest","./icon.svg","./firebase-web-config.json"];
 
 self.addEventListener("install",event=>{
