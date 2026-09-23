@@ -784,6 +784,16 @@ async function addToCalendar(event){
   const dateLines=time
     ? [`DTSTART:${icsStamp(start)}`,`DTEND:${icsStamp(end)}`]
     : [`DTSTART;VALUE=DATE:${icsDay(start)}`,`DTEND;VALUE=DATE:${icsDay(end)}`];
+  const reminderMinutes=reminderMinutesFor(event);
+  const alarmLines=time&&reminderMinutes>0
+    ? [
+        "BEGIN:VALARM",
+        `TRIGGER:-PT${reminderMinutes}M`,
+        "ACTION:DISPLAY",
+        `DESCRIPTION:${escapeIcs("Påminnelse: "+(event.description||"KOVA-aktivitet"))}`,
+        "END:VALARM"
+      ]
+    : [];
   const ics=[
     "BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//KOVA Companion//PWA//NO","BEGIN:VEVENT",
     `UID:${escapeIcs(eventKey(event))}@kova-companion`,
@@ -791,6 +801,7 @@ async function addToCalendar(event){
     `SUMMARY:${escapeIcs(event.description||"KOVA-aktivitet")}`,
     `DESCRIPTION:${escapeIcs((event.type||"Aktivitet")+" – "+(event.orgName||orgName(event.orgCode)))}`,
     `URL:${escapeIcs(event.sourceUrl||"https://www.kova.no/")}`,
+    ...alarmLines,
     "END:VEVENT","END:VCALENDAR",""
   ].join("\r\n");
   const file=new File([ics],"kova-aktivitet.ics",{type:"text/calendar"});
@@ -824,8 +835,8 @@ orgSelect.addEventListener("change",async()=>{
   }
   await loadEvents();
 });
-typeSelect.addEventListener("change",()=>{state.type=typeSelect.value;render()});
-searchInput.addEventListener("input",()=>{state.search=searchInput.value;render()});
+typeSelect.addEventListener("change",()=>{state.type=typeSelect.value;state.displayLimit=20;render()});
+searchInput.addEventListener("input",()=>{state.search=searchInput.value;state.displayLimit=20;render()});
 $("refreshBtn").onclick=loadEvents;
 $("followBtn").onclick=async()=>{
   state.followed.has(state.org)?state.followed.delete(state.org):state.followed.add(state.org);
@@ -838,23 +849,46 @@ $("followBtn").onclick=async()=>{
 $("viewTabs").addEventListener("click",async event=>{
   const btn=event.target.closest("button[data-view]"); if(!btn)return;
   state.view=btn.dataset.view;
+  state.displayLimit=20;
   document.querySelectorAll("#viewTabs button").forEach(b=>b.classList.toggle("active",b===btn));
   await loadEvents();
 });
 $("closeDialog").onclick=()=> $("detailDialog").close();
-$("favoriteDialogBtn").onclick=()=>{
+$("favoriteDialogBtn").onclick=async()=>{
   if(!state.selected)return;
-  const key=eventKey(state.selected);
-  state.favorites.has(key)?state.favorites.delete(key):state.favorites.add(key);
-  saveSet("kova.pwa.favorites",state.favorites);
-  updateDialogFavorite(); render();
-  refreshFavoriteDashboard().catch(()=>{});
+  await toggleFavorite(state.selected);
+  updateReminderUi();
 };
 $("detailNote").addEventListener("input",()=>{
   if(state.selected)saveNote(state.selected,$("detailNote").value);
 });
+$("reminderSelect").addEventListener("change",async()=>{
+  if(!state.selected)return;
+  const minutes=Number($("reminderSelect").value||0);
+  $("reminderSelect").disabled=true;
+  updateReminderUi("Lagrer påminnelse…");
+  try{
+    const registered=await saveReminder(state.selected,minutes);
+    updateReminderUi(
+      minutes===0
+        ? "Påminnelsen er slått av."
+        : registered
+          ? `Påminnelse lagret: ${reminderLabel(minutes)} før vakten.`
+          : `Påminnelse lagret lokalt: ${reminderLabel(minutes)} før. Aktiver varsler for push.`
+    );
+  }catch(error){
+    updateReminderUi("Kunne ikke lagre push-påminnelsen: "+(error.message||String(error)));
+  }finally{
+    updateDialogFavorite();
+  }
+});
+$("loadMoreBtn").onclick=()=>{
+  state.displayLimit+=20;
+  render();
+};
 $("myShiftsAllBtn").onclick=async()=>{
   state.view="favorites";
+  state.displayLimit=20;
   document.querySelectorAll("#viewTabs button").forEach(button=>button.classList.toggle("active",button.dataset.view==="favorites"));
   await loadEvents();
   $("orgTitle").scrollIntoView({behavior:"smooth",block:"start"});
