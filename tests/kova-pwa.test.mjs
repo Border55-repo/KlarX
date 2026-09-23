@@ -71,3 +71,13 @@ test("KOVA PWA has an everyday dashboard for upcoming shifts", async () => {
   assert.ok(app.includes("renderEverydayDashboard"));
   assert.ok(app.includes("5*60*1000"));
 });
+
+
+test("KOVA PWA supports remote admin cache generation", async () => {
+  const html = await readFile("apps/kova/index.html", "utf8");
+  const app = await readFile("apps/kova/app.js", "utf8");
+  assert.ok(html.includes('href="./admin/"'));
+  assert.ok(app.includes("checkRemoteCacheEpoch"));
+  assert.ok(app.includes('"publicConfig","pwa"'));
+  assert.ok(app.includes("caches.keys()"));
+});
