@@ -327,7 +327,9 @@ function updateDialogFavorite(){
   $("favoriteDialogBtn").textContent=state.favorites.has(eventKey(state.selected)) ? "★ Fjern favoritt" : "☆ Legg til favoritt";
 }
 async function fetchJson(url){
-  const response=await fetch(url,{cache:"no-store"});
+  const separator=url.includes("?")?"&":"?";
+  const freshUrl=url+`${separator}ts=${Date.now()}`;
+  const response=await fetch(freshUrl,{cache:"no-store"});
   if(!response.ok)throw new Error("Kunne ikke hente oppdaterte KOVA-data");
   return response.json();
 }
