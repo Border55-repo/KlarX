@@ -138,25 +138,33 @@ async function loadCurrent(){
   $("orgTitle").textContent=payload.organization?.name||state.org;
   statusText.textContent="KOVA-data oppdatert "+formatUpdated(payload.updatedAt);
 }
-async function loadFollowed(){
-  const codes=[...state.followed];
+async function loadMany(codes,title,emptyText){
   if(!codes.length){
     state.events=[];
-    $("orgTitle").textContent="Fulgte korps";
-    statusText.textContent="Ingen korps er fulgt ennå";
+    $("orgTitle").textContent=title;
+    statusText.textContent=emptyText;
     return;
   }
   const results=await Promise.allSettled(codes.map(loadOneOrg));
   state.events=results.filter(r=>r.status==="fulfilled").flatMap(r=>r.value.events);
-  $("orgTitle").textContent="Fulgte korps";
+  $("orgTitle").textContent=title;
   const ok=results.filter(r=>r.status==="fulfilled").length;
-  statusText.textContent=`Lastet ${ok} av ${codes.length} fulgte korps`;
+  statusText.textContent=`Lastet ${ok} av ${codes.length} korps`;
+}
+async function loadFollowed(){
+  await loadMany([...state.followed],"Fulgte korps","Ingen korps er fulgt ennå");
+}
+async function loadFavorites(){
+  const codes=[...new Set([...state.favorites].map(key=>key.split("|")[0]).filter(Boolean))];
+  await loadMany(codes,"Mine aktiviteter","Ingen favoritter er lagret ennå");
 }
 async function loadEvents(){
   statusText.textContent="Oppdaterer…";
   updateConnection();
   try{
-    if(state.view==="followed")await loadFollowed(); else await loadCurrent();
+    if(state.view==="followed")await loadFollowed();
+    else if(state.view==="favorites")await loadFavorites();
+    else await loadCurrent();
     updateTypes();
     render();
   }catch(error){
@@ -172,25 +180,38 @@ function formatUpdated(value){
 function escapeHtml(value=""){
   return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 }
-function calendarDate(event){
-  const time=(event.time||"").match(/\d{1,2}:\d{2}/)?.[0]||"09:00";
-  const [h,m]=time.split(":").map(Number);
+function eventTime(event){
+  return (event.time||"").match(/\d{1,2}:\d{2}/)?.[0]||"";
+}
+function calendarDate(event,time){
   const date=new Date(event.dateIso+"T00:00:00");
-  date.setHours(h,m,0,0);
+  if(time){
+    const [h,m]=time.split(":").map(Number);
+    date.setHours(h,m,0,0);
+  }
   return date;
+}
+function icsDay(date){
+  const p=n=>String(n).padStart(2,"0");
+  return `${date.getFullYear()}${p(date.getMonth()+1)}${p(date.getDate())}`;
 }
 function icsStamp(date){
   const p=n=>String(n).padStart(2,"0");
-  return `${date.getFullYear()}${p(date.getMonth()+1)}${p(date.getDate())}T${p(date.getHours())}${p(date.getMinutes())}00`;
+  return `${icsDay(date)}T${p(date.getHours())}${p(date.getMinutes())}00`;
 }
 function escapeIcs(value=""){return String(value).replace(/\\/g,"\\\\").replace(/\n/g,"\\n").replace(/,/g,"\\,").replace(/;/g,"\\;")}
 async function addToCalendar(event){
-  const start=calendarDate(event);
-  const end=new Date(start.getTime()+60*60*1000);
+  const time=eventTime(event);
+  const start=calendarDate(event,time);
+  const end=new Date(start);
+  if(time)end.setHours(end.getHours()+1); else end.setDate(end.getDate()+1);
+  const dateLines=time
+    ? [`DTSTART:${icsStamp(start)}`,`DTEND:${icsStamp(end)}`]
+    : [`DTSTART;VALUE=DATE:${icsDay(start)}`,`DTEND;VALUE=DATE:${icsDay(end)}`];
   const ics=[
     "BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//KOVA Companion//PWA//NO","BEGIN:VEVENT",
     `UID:${escapeIcs(eventKey(event))}@kova-companion`,
-    `DTSTART:${icsStamp(start)}`,`DTEND:${icsStamp(end)}`,
+    ...dateLines,
     `SUMMARY:${escapeIcs(event.description||"KOVA-aktivitet")}`,
     `DESCRIPTION:${escapeIcs((event.type||"Aktivitet")+" – "+(event.orgName||orgName(event.orgCode)))}`,
     `URL:${escapeIcs(event.sourceUrl||"https://www.kova.no/")}`,
