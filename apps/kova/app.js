@@ -906,6 +906,16 @@ async function loadFavorites(){
   const codes=[...new Set([...state.favorites].map(key=>key.split("|")[0]).filter(Boolean))];
   await loadMany(codes,"Mine vakter","Ingen favorittvakter er lagret ennå");
 }
+async function warmOfflineCache(){
+  if(!navigator.onLine)return;
+  const favoriteCodes=[...state.favorites]
+    .map(key=>key.split("|")[0])
+    .filter(Boolean);
+  const codes=[...new Set([state.org,...state.followed,...favoriteCodes])];
+  await loadWithConcurrency(codes,4);
+  localStorage.setItem("kova.pwa.offlineWarmedAt",new Date().toISOString());
+}
+
 async function loadEvents(){
   statusText.textContent="Oppdaterer…";
   updateConnection();
@@ -1251,6 +1261,7 @@ if("serviceWorker" in navigator){
     if(reloading)return;
     await loadEvents();
     await refreshFavoriteDashboard();
+    warmOfflineCache().catch(()=>{});
     await repairPushRegistration();
     await refreshNotificationUi();
     const params=new URLSearchParams(location.search);
