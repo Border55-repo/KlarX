@@ -12,7 +12,7 @@
     <div>
       <p class="eyebrow">KOVA COMPANION</p>
       <h1>KOVA Admin</h1>
-      <p class="version">Adminpanel 0.1</p>
+      <p class="version">Adminpanel 1.1</p>
     </div>
     <a class="ghost" href="../">Til Companion</a>
   </header>
@@ -55,6 +55,15 @@
         </div>
       </section>
 
+      <section id="systemHealth" class="health-banner card health-unknown">
+        <div>
+          <span class="label">Systemhelse</span>
+          <strong id="systemHealthLabel">Sjekker…</strong>
+          <span id="systemHealthHint" class="muted">Henter live Bridge-status.</span>
+        </div>
+        <span id="systemHealthDot" class="health-dot"></span>
+      </section>
+
       <section class="stats" id="stats">
         <article class="stat card"><span>Bridge</span><strong id="bridgeStatus">–</strong><small id="bridgeTime">–</small></article>
         <article class="stat card"><span>Hjelpekorps</span><strong id="corpsCount">–</strong><small>KOVA Bridge</small></article>
@@ -64,6 +73,16 @@
         <article class="stat card"><span>Android</span><strong id="androidVersion">–</strong><small>siste release</small></article>
         <article class="stat card"><span>PWA cache</span><strong id="cacheEpoch">–</strong><small>cache-generasjon</small></article>
         <article class="stat card"><span>Poll denne runden</span><strong id="polledThisRun">–</strong><small>korps</small></article>
+      </section>
+
+      <section class="actions card">
+        <div>
+          <span class="label">Drift</span>
+          <h2>Bridge-synk</h2>
+          <p class="muted">Be Bridge kjøre en full synk av alle korps. Forespørselen plukkes opp av backend på neste 5-minuttersrunde.</p>
+          <p id="bridgeSyncStatus" class="muted">Ingen aktiv synkforespørsel.</p>
+        </div>
+        <button id="bridgeSyncBtn" class="primary">Be om Bridge-synk</button>
       </section>
 
       <section class="actions card">
@@ -86,7 +105,7 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Korps</th><th>Status</th><th>Aktiviteter</th><th>Oppdatert</th></tr></thead>
+            <thead><tr><th>Korps</th><th>Status</th><th>Aktiviteter</th><th>Sist kontrollert</th><th>Data endret</th></tr></thead>
             <tbody id="orgRows"></tbody>
           </table>
         </div>
