@@ -1,6 +1,7 @@
 const DATA_BASE = "https://raw.githubusercontent.com/Border55-repo/KOVA-Companion-Android/main/bridge/data";
 const WEBPUSH_CONFIG_URL = `${DATA_BASE}/webpush-config.json`;
-const FIRESTORE_COMMIT_URL = "https://firestore.googleapis.com/v1/projects/kova-companion/databases/(default)/documents:commit";
+const FIREBASE_CONFIG_URL = "./firebase-web-config.json";
+let firestoreClientPromise = null;
 
 const state = {
   orgs: [],
@@ -58,6 +59,32 @@ async function endpointId(endpoint){
   return [...new Uint8Array(hash)].map(byte=>byte.toString(16).padStart(2,"0")).join("");
 }
 
+async function firestoreClient(){
+  if(!firestoreClientPromise){
+    firestoreClientPromise=(async()=>{
+      const [appModule,firestoreModule,config]=await Promise.all([
+        import("https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js"),
+        import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js"),
+        fetch(FIREBASE_CONFIG_URL,{cache:"no-store"}).then(response=>{
+          if(!response.ok)throw new Error("Kunne ikke hente Firebase Web-konfigurasjon");
+          return response.json();
+        })
+      ]);
+      const firebaseApp=appModule.getApps().length ? appModule.getApps()[0] : appModule.initializeApp(config);
+      return {
+        db:firestoreModule.getFirestore(firebaseApp),
+        doc:firestoreModule.doc,
+        setDoc:firestoreModule.setDoc,
+        serverTimestamp:firestoreModule.serverTimestamp
+      };
+    })().catch(error=>{
+      firestoreClientPromise=null;
+      throw error;
+    });
+  }
+  return firestoreClientPromise;
+}
+
 function pushSupported(){
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 }
@@ -73,40 +100,33 @@ async function savePushSubscription(subscription,enabled=true){
   const endpoint=json.endpoint||subscription.endpoint;
   const keys=json.keys||{};
   if(!endpoint||!keys.p256dh||!keys.auth)throw new Error("Ufullstendig Web Push-abonnement");
+
   const id=await endpointId(endpoint);
-  const name=`projects/kova-companion/databases/(default)/documents/webPushSubscriptions/${id}`;
   const organizations=[...state.followed];
   if(!organizations.includes(state.org))organizations.push(state.org);
 
-  const response=await fetch(FIRESTORE_COMMIT_URL,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      writes:[{
-        update:{
-          name,
-          fields:{
-            endpoint:{stringValue:endpoint},
-            p256dh:{stringValue:keys.p256dh},
-            auth:{stringValue:keys.auth},
-            organizations:{arrayValue:{values:organizations.slice(0,20).map(code=>({stringValue:code}))}},
-            enabled:{booleanValue:enabled},
-            platform:{stringValue:"pwa"}
-          }
-        },
-        updateTransforms:[{
-          fieldPath:"updatedAt",
-          setToServerValue:"REQUEST_TIME"
-        }]
-      }]
-    })
-  });
-  if(!response.ok){
-    const detail=await response.text();
+  try{
+    const firebase=await firestoreClient();
+    await firebase.setDoc(
+      firebase.doc(firebase.db,"webPushSubscriptions",id),
+      {
+        endpoint,
+        p256dh:keys.p256dh,
+        auth:keys.auth,
+        organizations:organizations.slice(0,20),
+        enabled,
+        platform:"pwa",
+        updatedAt:firebase.serverTimestamp()
+      },
+      {merge:false}
+    );
+    localStorage.setItem("kova.pwa.pushRegisteredAt",new Date().toISOString());
+    localStorage.removeItem("kova.pwa.pushLastError");
+  }catch(error){
     localStorage.removeItem("kova.pwa.pushRegisteredAt");
-    throw new Error("Kunne ikke lagre varselabonnement: "+response.status+" "+detail.slice(0,180));
+    localStorage.setItem("kova.pwa.pushLastError",error?.message||String(error));
+    throw new Error("Kunne ikke registrere varsler mot KOVA-backend: "+(error?.message||String(error)));
   }
-  localStorage.setItem("kova.pwa.pushRegisteredAt", new Date().toISOString());
 }
 
 async function syncPushOrganizations(){
@@ -173,6 +193,9 @@ async function refreshNotificationUi(){
     : enabled
       ? "Trykk Registrer på nytt for å koble enheten til KOVA Bridge."
       : "Ny, endret og fjernet aktivitet";
+  if(!backendRegistered && localStorage.getItem("kova.pwa.pushLastError")){
+    hint.textContent="Siste registreringsfeil: "+localStorage.getItem("kova.pwa.pushLastError");
+  }
   button.textContent=backendRegistered ? "Slå av varsler" : (enabled ? "Registrer på nytt" : "Aktiver varsler");
   button.classList.toggle("active",backendRegistered);
 }
