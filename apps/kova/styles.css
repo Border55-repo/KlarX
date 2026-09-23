@@ -65,3 +65,6 @@ dialog article{padding:22px}
 .notify-card>div{display:flex;min-width:0;flex-direction:column;gap:3px}
 .notify-card strong{white-space:normal}
 .notify-card .small.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+.about{display:flex;flex-direction:column;gap:5px;margin-top:18px}
+.about strong{font-size:.95rem}
