@@ -84,3 +84,6 @@ dialog article{padding:22px}
 .mini-event span{font-size:.76rem;color:var(--muted)}
 .compact-status{margin-bottom:12px}
 @media(max-width:560px){.upcoming-grid{grid-template-columns:1fr}}
+
+.actions{display:grid;gap:8px}
+.secondary-action{display:flex;align-items:center;justify-content:center;text-decoration:none;border:1px solid var(--border);border-radius:13px;padding:11px 14px;color:var(--text);font-weight:800;background:var(--card)}
