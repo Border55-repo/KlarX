@@ -110,3 +110,31 @@ test("KOVA Admin has live health and Bridge sync request", async () => {
   assert.ok(app.includes("organizationChecks"));
   assert.ok(app.includes("age>35"));
 });
+
+
+test("KOVA PWA keeps a network-first offline fallback for Bridge data", async () => {
+  const sw = await readFile("apps/kova/sw.js", "utf8");
+  assert.ok(sw.includes('url.hostname==="raw.githubusercontent.com"'));
+  assert.ok(sw.includes('/bridge/data/'));
+  assert.ok(sw.includes('fetch(event.request)'));
+  assert.ok(sw.includes('caches.match(event.request)'));
+});
+
+test("KOVA PWA calendar export builds a valid local ICS event", async () => {
+  const app = await readFile("apps/kova/app.js", "utf8");
+  assert.ok(app.includes('BEGIN:VCALENDAR'));
+  assert.ok(app.includes('BEGIN:VEVENT'));
+  assert.ok(app.includes('DTSTART'));
+  assert.ok(app.includes('DTEND'));
+  assert.ok(app.includes('SUMMARY:'));
+  assert.ok(app.includes('text/calendar'));
+  assert.ok(app.includes('navigator.canShare'));
+});
+
+test("KOVA Admin live Bridge sync status auto-refreshes while running", async () => {
+  const app = await readFile("apps/kova/admin/app.js", "utf8");
+  assert.ok(app.includes('bridgeCommandView'));
+  assert.ok(app.includes('scheduleDashboardRefresh'));
+  assert.ok(app.includes('active?10000:60000'));
+  assert.ok(app.includes('command?.status'));
+});
