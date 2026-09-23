@@ -19,7 +19,7 @@
     <div>
       <p class="eyebrow">RØDE KORS HJELPEKORPS</p>
       <h1>KOVA Companion</h1>
-      <p class="version">Web / iPhone PWA 1.11</p>
+      <p class="version">Web / iPhone PWA 1.12</p>
     </div>
     <button id="installBtn" class="ghost hidden">Installer</button>
   </header>
@@ -140,6 +140,7 @@
       </div>
       <div id="events" class="event-list"></div>
       <div id="empty" class="empty hidden">Ingen aktiviteter matcher valget.</div>
+      <button id="loadMoreBtn" class="small load-more hidden">Vis flere</button>
     </section>
 
     <section class="about card">
@@ -160,6 +161,20 @@
         <span>Lokal note</span>
         <textarea id="detailNote" rows="3" placeholder="For eksempel oppmøtested, utstyr eller noe du vil huske"></textarea>
         <small>Lagres bare på denne enheten.</small>
+      </label>
+      <label class="reminder-field">
+        <span>Påminnelse før vakten</span>
+        <select id="reminderSelect">
+          <option value="0">Ingen påminnelse</option>
+          <option value="15">15 minutter før</option>
+          <option value="30">30 minutter før</option>
+          <option value="60">1 time før</option>
+          <option value="120">2 timer før</option>
+          <option value="360">6 timer før</option>
+          <option value="1440">1 dag før</option>
+          <option value="2880">2 dager før</option>
+        </select>
+        <small id="reminderHint">Påminnelsen brukes i push og tas med når vakten legges i kalender.</small>
       </label>
       <div class="dialog-actions">
         <button id="favoriteDialogBtn" class="small"></button>
