@@ -24,6 +24,8 @@ const state = {
   quietStartHour: Number(localStorage.getItem("kova.pwa.quietStartHour")||22),
   quietEndHour: Number(localStorage.getItem("kova.pwa.quietEndHour")||7),
   orgIndex: new Map(),
+  bridgeApiVersion: "1.x",
+  bridgeCapabilities: {},
   selected: null,
 };
 
@@ -848,6 +850,8 @@ async function loadOrganizations(){
     state.orgIndex=new Map(
       (indexResult.value.organizations||[]).map(row=>[row.code,row])
     );
+    state.bridgeApiVersion=indexResult.value.apiVersion||"1.x";
+    state.bridgeCapabilities=indexResult.value.capabilities||{};
   }
   if(!state.orgs.some(o=>o.code===state.org))state.org="UllensakerRKH";
   renderOrgOptions($("orgSearchInput")?.value||"");
