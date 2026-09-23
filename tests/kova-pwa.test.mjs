@@ -46,3 +46,10 @@ test("KOVA PWA repairs push when returning to foreground", async () => {
   assert.ok(app.includes('registration.update()'));
   assert.ok(app.includes('controllerchange'));
 });
+
+
+test("KOVA PWA cache-busts fresh KOVA data requests", async () => {
+  const app = await readFile("apps/kova/app.js", "utf8");
+  assert.ok(app.includes("ts=1790163677805") || app.includes("Date.now()"));
+  assert.ok(app.includes('cache:"no-store"'));
+});
