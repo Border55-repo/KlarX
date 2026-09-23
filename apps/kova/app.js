@@ -230,16 +230,85 @@ async function savePushSubscription(subscription,enabled=true){
         organizations:organizations.slice(0,20),
         enabled,
         platform:"pwa",
+        reminderToken:reminderToken(),
         updatedAt:firebase.serverTimestamp()
       },
       {merge:false}
     );
     localStorage.setItem("kova.pwa.pushRegisteredAt",new Date().toISOString());
     localStorage.removeItem("kova.pwa.pushLastError");
+    syncAllReminders().catch(error=>console.warn("Kunne ikke synkronisere vaktpåminnelser",error));
   }catch(error){
     localStorage.removeItem("kova.pwa.pushRegisteredAt");
     localStorage.setItem("kova.pwa.pushLastError",error?.message||String(error));
     throw new Error("Kunne ikke registrere varsler mot KOVA-backend: "+(error?.message||String(error)));
+  }
+}
+
+async function reminderDocumentId(subscriptionId,event){
+  const meta=state.favoriteMeta[eventKey(event)]||favoriteMetaFor(event);
+  return endpointId(
+    subscriptionId+"|"+(event.orgCode||state.org)+"|"+semanticKey(event)+"|"+(meta.anchorDate||event.dateIso||"")
+  );
+}
+async function syncReminderBackend(event,leadMinutes,enabled=true){
+  const subscription=await currentPushSubscription();
+  if(!subscription || Notification.permission!=="granted")return false;
+  const json=subscription.toJSON();
+  const endpoint=json.endpoint||subscription.endpoint;
+  if(!endpoint)return false;
+  const subscriptionId=await endpointId(endpoint);
+  const reminderId=await reminderDocumentId(subscriptionId,event);
+  const firebase=await firestoreClient();
+  await firebase.setDoc(
+    firebase.doc(firebase.db,"webPushReminders",reminderId),
+    {
+      subscriptionId,
+      reminderToken:reminderToken(),
+      organization:event.orgCode||state.org,
+      eventId:event.id,
+      semanticKey:semanticKey(event),
+      dateIso:event.dateIso||"",
+      time:event.time||"",
+      description:event.description||"",
+      leadMinutes:Math.max(5,Number(leadMinutes)||5),
+      enabled:Boolean(enabled),
+      updatedAt:firebase.serverTimestamp()
+    },
+    {merge:false}
+  );
+  return true;
+}
+async function saveReminder(event,minutes){
+  const key=eventKey(event);
+  const current=reminderEntryFor(event);
+  if(minutes>0){
+    state.reminders[key]={
+      leadMinutes:minutes,
+      anchorDate:current?.anchorDate||state.favoriteMeta[key]?.anchorDate||event.dateIso||""
+    };
+    saveReminders();
+    return syncReminderBackend(event,minutes,true).catch(()=>false);
+  }
+  if(current){
+    await syncReminderBackend(event,current.leadMinutes,false).catch(()=>false);
+  }
+  delete state.reminders[key];
+  saveReminders();
+  return true;
+}
+async function syncAllReminders(){
+  if(Notification.permission!=="granted")return;
+  const all=[...state.favoriteEvents,...state.events];
+  const seen=new Set();
+  for(const event of all){
+    const key=eventKey(event);
+    if(seen.has(key))continue;
+    seen.add(key);
+    const minutes=reminderMinutesFor(event);
+    if(minutes>0 && state.favorites.has(key)){
+      await syncReminderBackend(event,minutes,true);
+    }
   }
 }
 
@@ -580,14 +649,13 @@ async function loadOrganizations(){
 }
 async function loadOneOrg(code){
   const payload=await fetchJson(`${DATA_BASE}/${encodeURIComponent(code)}.json`);
-  return {
-    payload,
-    events:(payload.events||[]).map(event=>({
-      ...event,
-      orgCode:code,
-      orgName:payload.organization?.name||orgName(code),
-    })),
-  };
+  const events=(payload.events||[]).map(event=>({
+    ...event,
+    orgCode:code,
+    orgName:payload.organization?.name||orgName(code),
+  }));
+  reconcileFavorites(code,events);
+  return {payload,events};
 }
 async function loadCurrent(){
   const {payload,events}=await loadOneOrg(state.org);
