@@ -17,6 +17,13 @@ const state = {
   favoriteEvents: [],
   displayLimit: 20,
   followed: new Set(JSON.parse(localStorage.getItem("kova.pwa.followed") || '["UllensakerRKH"]')),
+  favoriteOrgs: new Set(JSON.parse(localStorage.getItem("kova.pwa.favoriteOrgs") || '["UllensakerRKH"]')),
+  notificationKinds: new Set(JSON.parse(localStorage.getItem("kova.pwa.notificationKinds") || '["added","changed","removed"]')),
+  disabledNotificationTypes: new Set(JSON.parse(localStorage.getItem("kova.pwa.disabledNotificationTypes") || "[]")),
+  quietEnabled: localStorage.getItem("kova.pwa.quietEnabled")==="1",
+  quietStartHour: Number(localStorage.getItem("kova.pwa.quietStartHour")||22),
+  quietEndHour: Number(localStorage.getItem("kova.pwa.quietEndHour")||7),
+  orgIndex: new Map(),
   selected: null,
 };
 
@@ -42,6 +49,17 @@ function saveSet(key,set){localStorage.setItem(key,JSON.stringify([...set]))}
 function saveFavoriteMeta(){localStorage.setItem("kova.pwa.favoriteMeta",JSON.stringify(state.favoriteMeta))}
 function saveNotes(){localStorage.setItem("kova.pwa.notes",JSON.stringify(state.notes))}
 function saveReminders(){localStorage.setItem("kova.pwa.reminders",JSON.stringify(state.reminders))}
+function saveNotificationPrefs(){
+  saveSet("kova.pwa.notificationKinds",state.notificationKinds);
+  saveSet("kova.pwa.disabledNotificationTypes",state.disabledNotificationTypes);
+  localStorage.setItem("kova.pwa.quietEnabled",state.quietEnabled?"1":"0");
+  localStorage.setItem("kova.pwa.quietStartHour",String(state.quietStartHour));
+  localStorage.setItem("kova.pwa.quietEndHour",String(state.quietEndHour));
+}
+function timeHour(value,fallback){
+  const hour=Number(String(value||"").split(":")[0]);
+  return Number.isFinite(hour)?Math.max(0,Math.min(23,hour)):fallback;
+}
 function normalizeText(value=""){return String(value).trim().toLowerCase().replace(/\s+/g," ")}
 function semanticKey(event){return normalizeText(event.type)+"|"+normalizeText(event.description)}
 function noteFor(event){return state.notes[eventKey(event)]||""}
@@ -227,10 +245,15 @@ async function savePushSubscription(subscription,enabled=true){
         endpoint,
         p256dh:keys.p256dh,
         auth:keys.auth,
-        organizations:organizations.slice(0,20),
+        organizations:organizations.slice(0,100),
         enabled,
         platform:"pwa",
         reminderToken:reminderToken(),
+        notificationKinds:[...state.notificationKinds],
+        disabledEventTypes:[...state.disabledNotificationTypes].slice(0,100),
+        quietHoursEnabled:state.quietEnabled,
+        quietStartHour:state.quietStartHour,
+        quietEndHour:state.quietEndHour,
         updatedAt:firebase.serverTimestamp()
       },
       {merge:false}
