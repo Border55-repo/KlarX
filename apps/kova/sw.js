@@ -1,5 +1,5 @@
 const CACHE="kova-pwa-v20";
-const SHELL=["./","./index.html","./styles.css","./app.js","./manifest.webmanifest","./icon.svg","./firebase-web-config.json"];
+const SHELL=["./","./index.html","./styles.css","./app.js","./manifest.webmanifest","./icon.svg","./firebase-web-config.json","./privacy.html"];
 const HISTORY_DB="kova-pwa-history";
 const HISTORY_STORE="notifications";
 
