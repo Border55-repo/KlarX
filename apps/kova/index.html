@@ -7,6 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="KOVA Companion">
+  <meta name="format-detection" content="telephone=no">
   <title>KOVA Companion</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
@@ -18,7 +19,7 @@
     <div>
       <p class="eyebrow">RØDE KORS HJELPEKORPS</p>
       <h1>KOVA Companion</h1>
-      <p class="version">Web / iPhone PWA 1.0</p>
+      <p class="version">Web / iPhone PWA 1.1</p>
     </div>
     <button id="installBtn" class="ghost hidden">Installer</button>
   </header>
@@ -30,27 +31,41 @@
     </section>
 
     <section class="status card">
-      <div>
+      <div class="status-copy">
         <span class="label">Status</span>
         <strong id="statusText">Laster KOVA…</strong>
+        <span id="connectionText" class="muted">Sjekker nett…</span>
       </div>
       <button id="refreshBtn" class="small">Oppdater</button>
     </section>
 
     <section class="controls card">
-      <label>
-        <span>Hjelpekorps</span>
-        <select id="orgSelect"></select>
-      </label>
+      <div class="org-row">
+        <label>
+          <span>Hjelpekorps</span>
+          <select id="orgSelect"></select>
+        </label>
+        <button id="followBtn" class="small follow-btn">☆ Følg</button>
+      </div>
+
       <label>
         <span>Søk</span>
         <input id="searchInput" type="search" placeholder="Aktivitet, type eller dato">
       </label>
+
+      <label>
+        <span>Aktivitetstype</span>
+        <select id="typeSelect">
+          <option value="">Alle typer</option>
+        </select>
+      </label>
+
       <div class="segmented" id="viewTabs">
         <button data-view="all" class="active">Alle</button>
         <button data-view="week">7 dager</button>
         <button data-view="month">30 dager</button>
         <button data-view="favorites">Mine</button>
+        <button data-view="followed">Fulgte</button>
       </div>
     </section>
 
@@ -63,6 +78,7 @@
         <div>
           <span class="label">Aktiviteter</span>
           <h2 id="orgTitle">KOVA</h2>
+          <p id="followSummary" class="muted"></p>
         </div>
         <span id="eventCount" class="badge">0</span>
       </div>
@@ -77,8 +93,11 @@
       <p id="detailType" class="eyebrow"></p>
       <h2 id="detailTitle"></h2>
       <p id="detailMeta" class="muted"></p>
+      <p id="detailOrg" class="muted detail-org"></p>
       <div class="dialog-actions">
         <button id="favoriteDialogBtn" class="small"></button>
+        <button id="calendarBtn" class="small">Legg i kalender</button>
+        <button id="shareBtn" class="small">Del aktivitet</button>
         <a id="detailKovaLink" class="primary" target="_blank" rel="noopener">Åpne KOVA</a>
       </div>
     </article>
@@ -87,7 +106,10 @@
   <template id="eventTemplate">
     <article class="event-card">
       <div class="event-top">
-        <span class="type"></span>
+        <div>
+          <span class="type"></span>
+          <span class="org-chip hidden"></span>
+        </div>
         <button class="favorite" aria-label="Favoritt">☆</button>
       </div>
       <button class="event-main">
