@@ -19,7 +19,7 @@
     <div>
       <p class="eyebrow">RØDE KORS HJELPEKORPS</p>
       <h1>KOVA Companion</h1>
-      <p class="version">Web / iPhone PWA 1.7</p>
+      <p class="version">Web / iPhone PWA 1.8</p>
     </div>
     <button id="installBtn" class="ghost hidden">Installer</button>
   </header>
@@ -30,9 +30,39 @@
       <span>Åpne i Safari → Del → Legg til på Hjem-skjermen.</span>
     </section>
 
-    <section class="status card">
+    <section id="nextShiftCard" class="next-shift card hidden">
+      <span class="label">Neste vakt</span>
+      <button id="nextShiftButton" class="next-shift-button">
+        <strong id="nextShiftTitle"></strong>
+        <span id="nextShiftMeta"></span>
+      </button>
+    </section>
+
+    <section class="upcoming-grid">
+      <section class="card compact-list-card">
+        <div class="section-line">
+          <div>
+            <span class="label">Denne uka</span>
+            <strong id="weekCount">0 vakter</strong>
+          </div>
+        </div>
+        <div id="weekEvents" class="mini-list"></div>
+      </section>
+
+      <section class="card compact-list-card">
+        <div class="section-line">
+          <div>
+            <span class="label">Senere</span>
+            <strong id="laterCount">0 vakter</strong>
+          </div>
+        </div>
+        <div id="laterEvents" class="mini-list"></div>
+      </section>
+    </section>
+
+    <section class="status card compact-status">
       <div class="status-copy">
-        <span class="label">Status</span>
+        <span class="label">Oppdatert</span>
         <strong id="statusText">Laster KOVA…</strong>
         <span id="connectionText" class="muted">Sjekker nett…</span>
       </div>
@@ -73,7 +103,7 @@
         <button data-view="all" class="active">Alle</button>
         <button data-view="week">7 dager</button>
         <button data-view="month">30 dager</button>
-        <button data-view="favorites">Mine</button>
+        <button data-view="favorites">Mine vakter</button>
         <button data-view="followed">Fulgte</button>
       </div>
     </section>
