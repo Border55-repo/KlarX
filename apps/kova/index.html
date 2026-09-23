@@ -19,7 +19,7 @@
     <div>
       <p class="eyebrow">RØDE KORS HJELPEKORPS</p>
       <h1>KOVA Companion</h1>
-      <p class="version">Web / iPhone PWA 1.10</p>
+      <p class="version">Web / iPhone PWA 1.11</p>
     </div>
     <button id="installBtn" class="ghost hidden">Installer</button>
   </header>
@@ -28,6 +28,22 @@
     <section id="installHint" class="notice ios-only hidden">
       <strong>Installer på iPhone</strong>
       <span>Åpne i Safari → Del → Legg til på Hjem-skjermen.</span>
+    </section>
+
+    <section id="myShiftsCard" class="my-shifts card hidden">
+      <div class="my-shifts-head">
+        <div>
+          <span class="label">Mine vakter</span>
+          <strong id="myShiftsCount">0 kommende</strong>
+        </div>
+        <button id="myShiftsAllBtn" class="small">Se alle</button>
+      </div>
+      <button id="myShiftsNextBtn" class="my-shifts-next">
+        <span class="my-shifts-kicker">Neste valgte vakt</span>
+        <strong id="myShiftsTitle"></strong>
+        <span id="myShiftsMeta"></span>
+      </button>
+      <p id="myShiftsEmpty" class="muted hidden">Ingen kommende favorittvakter akkurat nå.</p>
     </section>
 
     <section id="nextShiftCard" class="next-shift card hidden">
@@ -140,6 +156,11 @@
       <h2 id="detailTitle"></h2>
       <p id="detailMeta" class="muted"></p>
       <p id="detailOrg" class="muted detail-org"></p>
+      <label class="note-field">
+        <span>Lokal note</span>
+        <textarea id="detailNote" rows="3" placeholder="For eksempel oppmøtested, utstyr eller noe du vil huske"></textarea>
+        <small>Lagres bare på denne enheten.</small>
+      </label>
       <div class="dialog-actions">
         <button id="favoriteDialogBtn" class="small"></button>
         <button id="calendarBtn" class="small">Legg i kalender</button>
