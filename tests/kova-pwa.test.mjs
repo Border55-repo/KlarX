@@ -140,3 +140,23 @@ test("KOVA Admin live Bridge sync status auto-refreshes while running", async ()
   assert.ok(app.includes('active?10000:60000'));
   assert.ok(app.includes('command?.status'));
 });
+
+
+test("KOVA PWA Mine vakter 2.0 favorite dashboard is present", async () => {
+  const html = await readFile("apps/kova/index.html", "utf8");
+  const app = await readFile("apps/kova/app.js", "utf8");
+  assert.ok(html.includes('id="myShiftsCard"'));
+  assert.ok(html.includes('Neste valgte vakt'));
+  assert.ok(app.includes("refreshFavoriteDashboard"));
+  assert.ok(app.includes("loadFavoriteEvents"));
+});
+
+test("KOVA PWA stores local notes per event", async () => {
+  const html = await readFile("apps/kova/index.html", "utf8");
+  const app = await readFile("apps/kova/app.js", "utf8");
+  assert.ok(html.includes('id="detailNote"'));
+  assert.ok(html.includes("Lagres bare på denne enheten"));
+  assert.ok(app.includes('"kova.pwa.notes"'));
+  assert.ok(app.includes("saveNote"));
+  assert.ok(app.includes("noteFor"));
+});
