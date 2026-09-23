@@ -60,3 +60,14 @@ test("KOVA PWA shows project owner information", async () => {
   assert.ok(html.includes("Prosjekteier: Julian Nordli"));
   assert.ok(html.includes("ikke en offisiell Røde Kors-app"));
 });
+
+
+test("KOVA PWA has an everyday dashboard for upcoming shifts", async () => {
+  const html = await readFile("apps/kova/index.html", "utf8");
+  const app = await readFile("apps/kova/app.js", "utf8");
+  for (const text of ["Neste vakt", "Denne uka", "Senere", "Mine vakter"]) {
+    assert.ok(html.includes(text), "Missing everyday UI text: " + text);
+  }
+  assert.ok(app.includes("renderEverydayDashboard"));
+  assert.ok(app.includes("5*60*1000"));
+});
