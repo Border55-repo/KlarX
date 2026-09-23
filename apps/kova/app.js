@@ -158,6 +158,18 @@ async function repairPushRegistration(){
   }
 }
 
+let repairingPush=false;
+async function repairPushOnResume(){
+  if(repairingPush) return;
+  repairingPush=true;
+  try{
+    await repairPushRegistration();
+    await refreshNotificationUi();
+  }finally{
+    repairingPush=false;
+  }
+}
+
 async function refreshNotificationUi(){
   const button=$("notificationBtn");
   const status=$("notificationStatus");
@@ -483,8 +495,12 @@ $("calendarBtn").onclick=async()=>{if(state.selected)await addToCalendar(state.s
 $("shareBtn").onclick=async()=>{if(state.selected)await shareEvent(state.selected)};
 $("notificationBtn").onclick=toggleNotifications;
 
-window.addEventListener("online",()=>{updateConnection();loadEvents()});
+window.addEventListener("online",()=>{updateConnection();loadEvents();repairPushOnResume()});
 window.addEventListener("offline",updateConnection);
+window.addEventListener("focus",repairPushOnResume);
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible") repairPushOnResume();
+});
 
 let installPrompt=null;
 window.addEventListener("beforeinstallprompt",event=>{
@@ -497,7 +513,17 @@ $("installBtn").onclick=async()=>{
 if(isIOS()&&!isStandalone())$("installHint").classList.remove("hidden");
 
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  navigator.serviceWorker.addEventListener("message",event=>{
+    if(event.data?.type==="pwa-updated") repairPushOnResume();
+  });
+  navigator.serviceWorker.register("./sw.js").then(async registration=>{
+    try{await registration.update()}catch{}
+    navigator.serviceWorker.addEventListener("controllerchange",()=>{
+      if(sessionStorage.getItem("kova.pwa.reloadedForUpdate")==="1") return;
+      sessionStorage.setItem("kova.pwa.reloadedForUpdate","1");
+      location.reload();
+    });
+  }).catch(()=>{});
 }
 
 (async()=>{
