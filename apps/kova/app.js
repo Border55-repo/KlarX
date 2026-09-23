@@ -11,6 +11,8 @@ const state = {
   search: "",
   type: "",
   favorites: new Set(JSON.parse(localStorage.getItem("kova.pwa.favorites") || "[]")),
+  notes: JSON.parse(localStorage.getItem("kova.pwa.notes") || "{}"),
+  favoriteEvents: [],
   followed: new Set(JSON.parse(localStorage.getItem("kova.pwa.followed") || '["UllensakerRKH"]')),
   selected: null,
 };
@@ -34,6 +36,14 @@ function displayTime(value=""){
   return t;
 }
 function saveSet(key,set){localStorage.setItem(key,JSON.stringify([...set]))}
+function saveNotes(){localStorage.setItem("kova.pwa.notes",JSON.stringify(state.notes))}
+function noteFor(event){return state.notes[eventKey(event)]||""}
+function saveNote(event,value){
+  const key=eventKey(event);
+  if(value.trim())state.notes[key]=value;
+  else delete state.notes[key];
+  saveNotes();
+}
 function dateInRange(dateIso,days){
   if(!dateIso)return false;
   const date=new Date(dateIso+"T00:00:00");
@@ -308,6 +318,53 @@ function upcomingEvents(){
     .sort((a,b)=>(a.dateIso+(eventTime(a)||"99:99")).localeCompare(b.dateIso+(eventTime(b)||"99:99")));
 }
 
+function sortUpcoming(events){
+  return events
+    .filter(event=>event.dateIso && dateInRange(event.dateIso,3650))
+    .sort((a,b)=>(a.dateIso+(eventTime(a)||"99:99")).localeCompare(b.dateIso+(eventTime(b)||"99:99")));
+}
+async function loadFavoriteEvents(){
+  const codes=[...new Set([...state.favorites].map(key=>key.split("|")[0]).filter(Boolean))];
+  if(!codes.length)return [];
+  const results=await Promise.allSettled(codes.map(loadOneOrg));
+  return sortUpcoming(
+    results
+      .filter(result=>result.status==="fulfilled")
+      .flatMap(result=>result.value.events)
+      .filter(event=>state.favorites.has(eventKey(event)))
+  );
+}
+async function refreshFavoriteDashboard(){
+  const card=$("myShiftsCard");
+  if(!state.favorites.size){
+    state.favoriteEvents=[];
+    card.classList.add("hidden");
+    return;
+  }
+  card.classList.remove("hidden");
+  try{
+    state.favoriteEvents=await loadFavoriteEvents();
+    const count=state.favoriteEvents.length;
+    $("myShiftsCount").textContent=`${count} ${count===1?"kommende":"kommende"}`;
+    const next=state.favoriteEvents[0]||null;
+    $("myShiftsNextBtn").classList.toggle("hidden",!next);
+    $("myShiftsEmpty").classList.toggle("hidden",!!next);
+    if(next){
+      $("myShiftsTitle").textContent=next.description||"KOVA-aktivitet";
+      $("myShiftsMeta").textContent=[
+        next.dateLabel,
+        displayTime(next.time),
+        next.orgName||orgName(next.orgCode)
+      ].filter(Boolean).join(" • ");
+      $("myShiftsNextBtn").onclick=()=>openDetail(next);
+    }
+  }catch(error){
+    $("myShiftsCount").textContent="Kunne ikke oppdatere";
+    $("myShiftsNextBtn").classList.add("hidden");
+    $("myShiftsEmpty").classList.remove("hidden");
+  }
+}
+
 function renderMiniList(containerId,events){
   const container=$(containerId);
   container.innerHTML="";
@@ -382,6 +439,7 @@ function render(){
       state.favorites.has(key)?state.favorites.delete(key):state.favorites.add(key);
       saveSet("kova.pwa.favorites",state.favorites);
       render();
+      refreshFavoriteDashboard().catch(()=>{});
     };
     node.querySelector(".event-main").onclick=()=>openDetail(event);
     eventsEl.appendChild(node);
@@ -393,6 +451,7 @@ function openDetail(event){
   $("detailTitle").textContent=event.description||"KOVA-aktivitet";
   $("detailMeta").textContent=[event.dateLabel,displayTime(event.time)].filter(Boolean).join(" • ");
   $("detailOrg").textContent=event.orgName||orgName(event.orgCode);
+  $("detailNote").value=noteFor(event);
   $("detailKovaLink").href=event.sourceUrl||"https://www.kova.no/";
   updateDialogFavorite();
   $("detailDialog").showModal();
@@ -567,6 +626,16 @@ $("favoriteDialogBtn").onclick=()=>{
   state.favorites.has(key)?state.favorites.delete(key):state.favorites.add(key);
   saveSet("kova.pwa.favorites",state.favorites);
   updateDialogFavorite(); render();
+  refreshFavoriteDashboard().catch(()=>{});
+};
+$("detailNote").addEventListener("input",()=>{
+  if(state.selected)saveNote(state.selected,$("detailNote").value);
+});
+$("myShiftsAllBtn").onclick=async()=>{
+  state.view="favorites";
+  document.querySelectorAll("#viewTabs button").forEach(button=>button.classList.toggle("active",button.dataset.view==="favorites"));
+  await loadEvents();
+  $("orgTitle").scrollIntoView({behavior:"smooth",block:"start"});
 };
 $("calendarBtn").onclick=async()=>{if(state.selected)await addToCalendar(state.selected)};
 $("shareBtn").onclick=async()=>{if(state.selected)await shareEvent(state.selected)};
@@ -624,6 +693,7 @@ if("serviceWorker" in navigator){
     const reloading=await checkRemoteCacheEpoch();
     if(reloading)return;
     await loadEvents();
+    await refreshFavoriteDashboard();
     await repairPushRegistration();
     await refreshNotificationUi();
   }catch(error){
