@@ -494,11 +494,79 @@ async function toggleNotifications(){
     $("notificationHint").textContent=error.message||String(error);
   }
 }
+function renderOrgOptions(filter=""){
+  const q=filter.trim().toLowerCase();
+  const current=state.org;
+  const rows=state.orgs
+    .filter(org=>!q || org.name.toLowerCase().includes(q) || org.code.toLowerCase().includes(q))
+    .sort((a,b)=>{
+      const af=state.favoriteOrgs.has(a.code)?0:1;
+      const bf=state.favoriteOrgs.has(b.code)?0:1;
+      return af-bf || a.name.localeCompare(b.name,"nb");
+    });
+  orgSelect.innerHTML=rows.map(org=>{
+    const star=state.favoriteOrgs.has(org.code)?"★ ":"";
+    return `<option value="${escapeHtml(org.code)}">${star}${escapeHtml(org.name)}</option>`;
+  }).join("");
+  if(rows.some(org=>org.code===current))orgSelect.value=current;
+}
+function updateFavoriteOrgUi(){
+  const favorite=state.favoriteOrgs.has(state.org);
+  $("favoriteOrgBtn").textContent=favorite?"★ Favoritt":"☆ Favoritt";
+  $("favoriteOrgBtn").classList.toggle("active",favorite);
+}
+function updateDataQuality(){
+  const row=state.orgIndex.get(state.org);
+  if(!row){
+    $("dataQuality").textContent="Datakvalitet: status ikke tilgjengelig ennå.";
+    return;
+  }
+  const status=row.status==="ok"?"OK":(row.status||"ukjent");
+  $("dataQuality").textContent=[
+    "Datakvalitet: "+status,
+    Number.isFinite(Number(row.eventCount))?row.eventCount+" aktiviteter":"",
+    row.updatedAt?"oppdatert "+formatUpdated(row.updatedAt):""
+  ].filter(Boolean).join(" • ");
+}
+function renderNotificationTypeSettings(){
+  const types=[...new Set(state.events.map(event=>event.type).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"nb"));
+  const container=$("notificationTypes");
+  container.innerHTML="";
+  if(!types.length){
+    container.textContent="Aktivitetstyper vises etter første synk.";
+    return;
+  }
+  for(const type of types){
+    const label=document.createElement("label");
+    const input=document.createElement("input");
+    input.type="checkbox";
+    input.checked=!state.disabledNotificationTypes.has(type);
+    input.onchange=async()=>{
+      input.checked?state.disabledNotificationTypes.delete(type):state.disabledNotificationTypes.add(type);
+      saveNotificationPrefs();
+      await syncPushOrganizations();
+    };
+    label.append(input,document.createTextNode(type));
+    container.appendChild(label);
+  }
+}
+function updateNotificationSettingsUi(){
+  $("notifyAdded").checked=state.notificationKinds.has("added");
+  $("notifyChanged").checked=state.notificationKinds.has("changed");
+  $("notifyRemoved").checked=state.notificationKinds.has("removed");
+  $("quietEnabled").checked=state.quietEnabled;
+  $("quietStart").value=String(state.quietStartHour).padStart(2,"0")+":00";
+  $("quietEnd").value=String(state.quietEndHour).padStart(2,"0")+":00";
+  renderNotificationTypeSettings();
+}
+
 function updateFollowUi(){
   const followed=state.followed.has(state.org);
   $("followBtn").textContent=followed ? "★ Følger" : "☆ Følg";
   $("followBtn").classList.toggle("active",followed);
   $("followSummary").textContent=state.followed.size ? `${state.followed.size} korps fulgt` : "Ingen korps fulgt";
+  updateFavoriteOrgUi();
+  updateDataQuality();
 }
 function updateTypes(){
   const current=typeSelect.value;
@@ -506,6 +574,7 @@ function updateTypes(){
   typeSelect.innerHTML='<option value="">Alle typer</option>'+types.map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
   state.type=types.includes(current) ? current : "";
   typeSelect.value=state.type;
+  renderNotificationTypeSettings();
 }
 function upcomingEvents(){
   return state.events
