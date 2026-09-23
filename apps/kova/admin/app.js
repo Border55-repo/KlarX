@@ -97,7 +97,15 @@ $("loginForm").addEventListener("submit",async event=>{
     const f=await initFirebase();
     await f.signInWithEmailAndPassword(f.auth,ADMIN_EMAIL,$("password").value);
   }catch(error){
-    err("loginError","Innlogging feilet. Kontroller passordet.");
+    const code=String(error?.code||"");
+    const message=
+      code.includes("auth/invalid-credential") ? "Feil brukernavn/passord, eller superuser-kontoen finnes ikke i Firebase." :
+      code.includes("auth/user-not-found") ? "Superuser-kontoen finnes ikke i Firebase Authentication." :
+      code.includes("auth/wrong-password") ? "Passordet er feil." :
+      code.includes("auth/operation-not-allowed") ? "Email/Password-innlogging er ikke aktivert i Firebase Authentication." :
+      code.includes("auth/network-request-failed") ? "Kunne ikke kontakte Firebase. Sjekk nettforbindelsen." :
+      "Innlogging feilet: "+(error?.message||code||"ukjent feil");
+    err("loginError",message);
   }
 });
 
