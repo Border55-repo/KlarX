@@ -98,3 +98,15 @@ test("KOVA Admin contains secure first-login and cache controls", async () => {
   assert.ok(app.includes("mustChangePassword"));
   assert.ok(app.includes('"publicConfig","pwa"'));
 });
+
+
+test("KOVA Admin has live health and Bridge sync request", async () => {
+  const html = await readFile("apps/kova/admin/index.html", "utf8");
+  const app = await readFile("apps/kova/admin/app.js", "utf8");
+  assert.ok(html.includes("Systemhelse"));
+  assert.ok(html.includes("Be om Bridge-synk"));
+  assert.ok(app.includes('"adminRuntime","bridge"'));
+  assert.ok(app.includes('"adminCommands","bridgeSync"'));
+  assert.ok(app.includes("organizationChecks"));
+  assert.ok(app.includes("age>35"));
+});
