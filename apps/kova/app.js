@@ -103,8 +103,10 @@ async function savePushSubscription(subscription,enabled=true){
   });
   if(!response.ok){
     const detail=await response.text();
+    localStorage.removeItem("kova.pwa.pushRegisteredAt");
     throw new Error("Kunne ikke lagre varselabonnement: "+response.status+" "+detail.slice(0,180));
   }
+  localStorage.setItem("kova.pwa.pushRegisteredAt", new Date().toISOString());
 }
 
 async function syncPushOrganizations(){
@@ -141,10 +143,20 @@ async function refreshNotificationUi(){
   button.disabled=false;
   const subscription=await currentPushSubscription();
   const enabled=Notification.permission==="granted" && !!subscription;
-  status.textContent=enabled ? "Varsler er på" : (Notification.permission==="denied" ? "Varsler er blokkert" : "Varsler er av");
-  hint.textContent=enabled ? `Følger ${state.followed.size} korps` : "Ny, endret og fjernet aktivitet";
-  button.textContent=enabled ? "Slå av varsler" : "Aktiver varsler";
-  button.classList.toggle("active",enabled);
+  const registeredAt=localStorage.getItem("kova.pwa.pushRegisteredAt");
+  const backendRegistered=enabled && !!registeredAt;
+  status.textContent=backendRegistered
+    ? "Varsler er på – backend registrert"
+    : enabled
+      ? "Varsler er på lokalt – registrering mangler"
+      : (Notification.permission==="denied" ? "Varsler er blokkert" : "Varsler er av");
+  hint.textContent=backendRegistered
+    ? `Følger ${state.followed.size} korps • registrert ${new Intl.DateTimeFormat("nb-NO",{dateStyle:"short",timeStyle:"short"}).format(new Date(registeredAt))}`
+    : enabled
+      ? "Trykk Registrer på nytt for å koble enheten til KOVA Bridge."
+      : "Ny, endret og fjernet aktivitet";
+  button.textContent=backendRegistered ? "Slå av varsler" : (enabled ? "Registrer på nytt" : "Aktiver varsler");
+  button.classList.toggle("active",backendRegistered);
 }
 
 async function enableNotifications(){
@@ -173,6 +185,7 @@ async function disableNotifications(){
     await savePushSubscription(subscription,false);
     await subscription.unsubscribe();
   }
+  localStorage.removeItem("kova.pwa.pushRegisteredAt");
   await refreshNotificationUi();
 }
 
@@ -180,7 +193,15 @@ async function toggleNotifications(){
   try{
     const subscription=await currentPushSubscription();
     const enabled=Notification.permission==="granted" && !!subscription;
-    if(enabled)await disableNotifications(); else await enableNotifications();
+    const backendRegistered=enabled && !!localStorage.getItem("kova.pwa.pushRegisteredAt");
+    if(backendRegistered){
+      await disableNotifications();
+    }else if(enabled){
+      await savePushSubscription(subscription,true);
+      await refreshNotificationUi();
+    }else{
+      await enableNotifications();
+    }
   }catch(error){
     $("notificationStatus").textContent="Varseloppsett feilet";
     $("notificationHint").textContent=error.message||String(error);
