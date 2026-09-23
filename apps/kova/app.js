@@ -132,7 +132,7 @@ function reconcileFavorites(code,events){
       .filter(event=>semanticKey(event)===meta.semanticKey)
       .map(event=>({event,distance:dateDistanceDays(meta.dateIso||meta.anchorDate,event.dateIso)}))
       .sort((a,b)=>a.distance-b.distance);
-    if(candidates.length && candidates[0].distance<=14){
+    if(candidates.length===1 || (candidates.length>1 && candidates[0].distance<=14)){
       changed=migrateFavorite(key,candidates[0].event)||changed;
     }
   }
