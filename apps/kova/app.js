@@ -1,4 +1,6 @@
 const DATA_BASE = "https://raw.githubusercontent.com/Border55-repo/KOVA-Companion-Android/main/bridge/data";
+const WEBPUSH_CONFIG_URL = `${DATA_BASE}/webpush-config.json`;
+const FIRESTORE_COMMIT_URL = "https://firestore.googleapis.com/v1/projects/kova-companion/databases/(default)/documents:commit";
 
 const state = {
   orgs: [],
@@ -41,6 +43,148 @@ function dateInRange(dateIso,days){
 function orgName(code){return state.orgs.find(o=>o.code===code)?.name || code}
 function updateConnection(){
   $("connectionText").textContent=navigator.onLine ? "På nett" : "Frakoblet – viser cache hvis tilgjengelig";
+}
+
+function base64UrlToUint8Array(value){
+  const padding="=".repeat((4-value.length%4)%4);
+  const base64=(value+padding).replace(/-/g,"+").replace(/_/g,"/");
+  const raw=atob(base64);
+  return Uint8Array.from([...raw].map(char=>char.charCodeAt(0)));
+}
+
+async function endpointId(endpoint){
+  const bytes=new TextEncoder().encode(endpoint);
+  const hash=await crypto.subtle.digest("SHA-256",bytes);
+  return [...new Uint8Array(hash)].map(byte=>byte.toString(16).padStart(2,"0")).join("");
+}
+
+function pushSupported(){
+  return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+}
+
+async function currentPushSubscription(){
+  if(!pushSupported())return null;
+  const registration=await navigator.serviceWorker.ready;
+  return registration.pushManager.getSubscription();
+}
+
+async function savePushSubscription(subscription,enabled=true){
+  const json=subscription.toJSON();
+  const endpoint=json.endpoint||subscription.endpoint;
+  const keys=json.keys||{};
+  if(!endpoint||!keys.p256dh||!keys.auth)throw new Error("Ufullstendig Web Push-abonnement");
+  const id=await endpointId(endpoint);
+  const name=`projects/kova-companion/databases/(default)/documents/webPushSubscriptions/${id}`;
+  const organizations=[...state.followed];
+  if(!organizations.includes(state.org))organizations.push(state.org);
+
+  const response=await fetch(FIRESTORE_COMMIT_URL,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      writes:[{
+        update:{
+          name,
+          fields:{
+            endpoint:{stringValue:endpoint},
+            p256dh:{stringValue:keys.p256dh},
+            auth:{stringValue:keys.auth},
+            organizations:{arrayValue:{values:organizations.slice(0,20).map(code=>({stringValue:code}))}},
+            enabled:{booleanValue:enabled},
+            platform:{stringValue:"pwa"}
+          }
+        },
+        updateTransforms:[{
+          fieldPath:"updatedAt",
+          setToServerValue:"REQUEST_TIME"
+        }]
+      }]
+    })
+  });
+  if(!response.ok){
+    const detail=await response.text();
+    throw new Error("Kunne ikke lagre varselabonnement: "+response.status+" "+detail.slice(0,180));
+  }
+}
+
+async function syncPushOrganizations(){
+  try{
+    const subscription=await currentPushSubscription();
+    if(subscription && Notification.permission==="granted"){
+      await savePushSubscription(subscription,true);
+    }
+  }catch(error){
+    console.warn("Kunne ikke synkronisere push-korps",error);
+  }
+}
+
+async function refreshNotificationUi(){
+  const button=$("notificationBtn");
+  const status=$("notificationStatus");
+  const hint=$("notificationHint");
+
+  if(!pushSupported()){
+    status.textContent="Ikke støttet på denne enheten";
+    hint.textContent="";
+    button.disabled=true;
+    return;
+  }
+
+  if(isIOS()&&!isStandalone()){
+    status.textContent="Installer KOVA Companion først";
+    hint.textContent="På iPhone fungerer varsler etter at PWA-en er lagt på Hjem-skjermen.";
+    button.textContent="Installer først";
+    button.disabled=true;
+    return;
+  }
+
+  button.disabled=false;
+  const subscription=await currentPushSubscription();
+  const enabled=Notification.permission==="granted" && !!subscription;
+  status.textContent=enabled ? "Varsler er på" : (Notification.permission==="denied" ? "Varsler er blokkert" : "Varsler er av");
+  hint.textContent=enabled ? `Følger ${state.followed.size} korps` : "Ny, endret og fjernet aktivitet";
+  button.textContent=enabled ? "Slå av varsler" : "Aktiver varsler";
+  button.classList.toggle("active",enabled);
+}
+
+async function enableNotifications(){
+  if(isIOS()&&!isStandalone())return;
+  const permission=await Notification.requestPermission();
+  if(permission!=="granted"){
+    await refreshNotificationUi();
+    return;
+  }
+  const config=await fetchJson(WEBPUSH_CONFIG_URL);
+  const registration=await navigator.serviceWorker.ready;
+  let subscription=await registration.pushManager.getSubscription();
+  if(!subscription){
+    subscription=await registration.pushManager.subscribe({
+      userVisibleOnly:true,
+      applicationServerKey:base64UrlToUint8Array(config.publicKey)
+    });
+  }
+  await savePushSubscription(subscription,true);
+  await refreshNotificationUi();
+}
+
+async function disableNotifications(){
+  const subscription=await currentPushSubscription();
+  if(subscription){
+    await savePushSubscription(subscription,false);
+    await subscription.unsubscribe();
+  }
+  await refreshNotificationUi();
+}
+
+async function toggleNotifications(){
+  try{
+    const subscription=await currentPushSubscription();
+    const enabled=Notification.permission==="granted" && !!subscription;
+    if(enabled)await disableNotifications(); else await enableNotifications();
+  }catch(error){
+    $("notificationStatus").textContent="Varseloppsett feilet";
+    $("notificationHint").textContent=error.message||String(error);
+  }
 }
 function updateFollowUi(){
   const followed=state.followed.has(state.org);
@@ -255,6 +399,8 @@ $("followBtn").onclick=async()=>{
   state.followed.has(state.org)?state.followed.delete(state.org):state.followed.add(state.org);
   saveSet("kova.pwa.followed",state.followed);
   updateFollowUi();
+  await syncPushOrganizations();
+  await refreshNotificationUi();
   if(state.view==="followed")await loadEvents();
 };
 $("viewTabs").addEventListener("click",async event=>{
@@ -273,6 +419,7 @@ $("favoriteDialogBtn").onclick=()=>{
 };
 $("calendarBtn").onclick=async()=>{if(state.selected)await addToCalendar(state.selected)};
 $("shareBtn").onclick=async()=>{if(state.selected)await shareEvent(state.selected)};
+$("notificationBtn").onclick=toggleNotifications;
 
 window.addEventListener("online",()=>{updateConnection();loadEvents()});
 window.addEventListener("offline",updateConnection);
@@ -296,6 +443,7 @@ if("serviceWorker" in navigator){
   try{
     await loadOrganizations();
     await loadEvents();
+    await refreshNotificationUi();
   }catch(error){
     statusText.textContent=error.message||"Oppstart feilet";
   }
