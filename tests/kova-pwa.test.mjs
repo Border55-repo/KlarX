@@ -195,3 +195,55 @@ test("KOVA PWA includes selected reminder in calendar export", async () => {
   assert.ok(app.includes("TRIGGER:-PT"));
   assert.ok(app.includes("reminderMinutesFor(event)"));
 });
+
+
+test("KOVA PWA Varsler 2.0 preferences and history are wired", async () => {
+  const html = await readFile("apps/kova/index.html", "utf8");
+  const app = await readFile("apps/kova/app.js", "utf8");
+  const sw = await readFile("apps/kova/sw.js", "utf8");
+  assert.ok(html.includes('id="notificationSettings"'));
+  assert.ok(html.includes('id="quietEnabled"'));
+  assert.ok(app.includes("notificationKinds"));
+  assert.ok(app.includes("disabledNotificationTypes"));
+  assert.ok(app.includes("syncNotificationPreferenceControls"));
+  assert.ok(sw.includes("HISTORY_DB"));
+  assert.ok(sw.includes("get-notification-history"));
+});
+
+test("KOVA PWA supports scalable corps search and favorites", async () => {
+  const html = await readFile("apps/kova/index.html", "utf8");
+  const app = await readFile("apps/kova/app.js", "utf8");
+  assert.ok(html.includes('id="orgSearchInput"'));
+  assert.ok(html.includes('id="favoriteOrgBtn"'));
+  assert.ok(app.includes("favoriteOrgs"));
+  assert.ok(app.includes("loadWithConcurrency"));
+  assert.ok(app.includes("updateDataQuality"));
+});
+
+test("KOVA PWA event details expose optional location contact and change summary", async () => {
+  const html = await readFile("apps/kova/index.html", "utf8");
+  const app = await readFile("apps/kova/app.js", "utf8");
+  assert.ok(html.includes('id="detailExtra"'));
+  assert.ok(html.includes('id="detailChange"'));
+  assert.ok(app.includes("extractLocation"));
+  assert.ok(app.includes("extractContact"));
+  assert.ok(app.includes("changeSummary"));
+});
+
+test("KOVA PWA offline recovery queues refresh and navigation has cache fallback", async () => {
+  const app = await readFile("apps/kova/app.js", "utf8");
+  const sw = await readFile("apps/kova/sw.js", "utf8");
+  assert.ok(app.includes("kova.pwa.pendingRefresh"));
+  assert.ok(app.includes("queuedRefresh"));
+  assert.ok(sw.includes('event.request.mode==="navigate"'));
+  assert.ok(sw.includes('caches.match("./index.html")'));
+});
+
+test("KOVA PWA accessibility includes skip navigation focus and reduced motion", async () => {
+  const html = await readFile("apps/kova/index.html", "utf8");
+  const css = await readFile("apps/kova/styles.css", "utf8");
+  assert.ok(html.includes('class="skip-link"'));
+  assert.ok(html.includes('aria-label="Hurtignavigasjon"'));
+  assert.ok(css.includes(":focus-visible"));
+  assert.ok(css.includes("prefers-reduced-motion"));
+});
