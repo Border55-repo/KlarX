@@ -740,6 +740,60 @@ async function toggleFavorite(event){
   render();
   await refreshFavoriteDashboard().catch(()=>{});
 }
+function extractContact(event){
+  const text=event.contact||event.description||"";
+  const email=text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]||"";
+  const phone=text.match(/(?:\+47\s*)?(?:\d[\s-]?){8}/)?.[0]?.trim()||"";
+  return email||phone;
+}
+function extractLocation(event){
+  if(event.location)return event.location;
+  const description=String(event.description||"");
+  const parts=description.split(",").map(part=>part.trim()).filter(Boolean);
+  if(parts.length>1){
+    const candidate=parts.at(-1);
+    if(candidate.length>=4 && candidate.length<=90 && !/^\d{1,2}:\d{2}/.test(candidate)){
+      return candidate;
+    }
+  }
+  return "";
+}
+function renderDetailExtra(event){
+  const container=$("detailExtra");
+  container.innerHTML="";
+  const location=extractLocation(event);
+  const contact=extractContact(event);
+  if(location){
+    const row=document.createElement("div");
+    const label=document.createElement("strong");
+    label.textContent="Sted: ";
+    const link=document.createElement("a");
+    link.href="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(location);
+    link.target="_blank";
+    link.rel="noopener";
+    link.textContent=location;
+    row.append(label,link);
+    container.appendChild(row);
+  }
+  if(contact){
+    const row=document.createElement("div");
+    const label=document.createElement("strong");
+    label.textContent="Kontakt: ";
+    const value=document.createElement("span");
+    value.textContent=contact;
+    row.append(label,value);
+    container.appendChild(row);
+  }
+  if(!location&&!contact){
+    const row=document.createElement("span");
+    row.className="muted";
+    row.textContent="KOVA har ikke strukturert sted eller kontaktinformasjon for denne aktiviteten.";
+    container.appendChild(row);
+  }
+  const change=event.changeSummary||"";
+  $("detailChange").textContent=change;
+  $("detailChange").classList.toggle("hidden",!change);
+}
 function openDetail(event){
   state.selected=event;
   $("detailType").textContent=event.type||"Aktivitet";
@@ -748,6 +802,7 @@ function openDetail(event){
   $("detailOrg").textContent=event.orgName||orgName(event.orgCode);
   $("detailNote").value=noteFor(event);
   $("detailKovaLink").href=event.sourceUrl||"https://www.kova.no/";
+  renderDetailExtra(event);
   updateDialogFavorite();
   updateReminderUi();
   $("detailDialog").showModal();
@@ -783,10 +838,19 @@ async function fetchJson(url){
   return response.json();
 }
 async function loadOrganizations(){
-  const payload=await fetchJson(`${DATA_BASE}/organizations.json`);
-  state.orgs=payload.organizations.filter(o=>o.category==="hjelpekorps");
-  orgSelect.innerHTML=state.orgs.map(o=>`<option value="${escapeHtml(o.code)}">${escapeHtml(o.name)}</option>`).join("");
+  const [orgResult,indexResult]=await Promise.allSettled([
+    fetchJson(`${DATA_BASE}/organizations.json`),
+    fetchJson(`${DATA_BASE}/index.json`)
+  ]);
+  if(orgResult.status!=="fulfilled")throw orgResult.reason;
+  state.orgs=orgResult.value.organizations.filter(o=>o.category==="hjelpekorps");
+  if(indexResult.status==="fulfilled"){
+    state.orgIndex=new Map(
+      (indexResult.value.organizations||[]).map(row=>[row.code,row])
+    );
+  }
   if(!state.orgs.some(o=>o.code===state.org))state.org="UllensakerRKH";
+  renderOrgOptions($("orgSearchInput")?.value||"");
   orgSelect.value=state.org;
   updateFollowUi();
 }
@@ -806,6 +870,22 @@ async function loadCurrent(){
   $("orgTitle").textContent=payload.organization?.name||state.org;
   statusText.textContent="KOVA-data oppdatert "+formatUpdated(payload.updatedAt);
 }
+async function loadWithConcurrency(codes,limit=6){
+  const results=new Array(codes.length);
+  let cursor=0;
+  async function worker(){
+    while(cursor<codes.length){
+      const index=cursor++;
+      try{
+        results[index]={status:"fulfilled",value:await loadOneOrg(codes[index])};
+      }catch(reason){
+        results[index]={status:"rejected",reason};
+      }
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(limit,codes.length)},()=>worker()));
+  return results;
+}
 async function loadMany(codes,title,emptyText){
   if(!codes.length){
     state.events=[];
@@ -813,7 +893,7 @@ async function loadMany(codes,title,emptyText){
     statusText.textContent=emptyText;
     return;
   }
-  const results=await Promise.allSettled(codes.map(loadOneOrg));
+  const results=await loadWithConcurrency(codes,6);
   state.events=results.filter(r=>r.status==="fulfilled").flatMap(r=>r.value.events);
   $("orgTitle").textContent=title;
   const ok=results.filter(r=>r.status==="fulfilled").length;
