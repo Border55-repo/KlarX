@@ -997,6 +997,96 @@ async function shareEvent(event){
   }
 }
 
+async function syncNotificationPreferenceControls(){
+  state.notificationKinds=new Set(
+    [
+      ["added",$("notifyAdded").checked],
+      ["changed",$("notifyChanged").checked],
+      ["removed",$("notifyRemoved").checked]
+    ].filter(([,enabled])=>enabled).map(([kind])=>kind)
+  );
+  state.quietEnabled=$("quietEnabled").checked;
+  state.quietStartHour=timeHour($("quietStart").value,22);
+  state.quietEndHour=timeHour($("quietEnd").value,7);
+  saveNotificationPrefs();
+  await syncPushOrganizations();
+  await refreshNotificationUi();
+}
+function renderNotificationHistory(items=[]){
+  const container=$("notificationHistory");
+  container.innerHTML="";
+  container.classList.toggle("hidden",!items.length);
+  if(!items.length){
+    container.classList.remove("hidden");
+    container.textContent="Ingen lokale pushvarsler er lagret ennå.";
+    return;
+  }
+  for(const item of items.slice(0,50)){
+    const row=document.createElement("div");
+    row.className="history-item";
+    const title=document.createElement("strong");
+    title.textContent=item.title||"KOVA-varsel";
+    const body=document.createElement("span");
+    body.textContent=item.body||"";
+    const meta=document.createElement("span");
+    meta.textContent=[
+      item.timestamp?formatUpdated(item.timestamp):"",
+      item.organization?orgName(item.organization):"",
+      item.kind||""
+    ].filter(Boolean).join(" • ");
+    row.append(title,body,meta);
+    container.appendChild(row);
+  }
+}
+function requestNotificationHistory(){
+  const controller=navigator.serviceWorker?.controller;
+  if(!controller){
+    renderNotificationHistory([]);
+    return;
+  }
+  controller.postMessage({type:"get-notification-history"});
+}
+async function openNotificationTarget(data={}){
+  const organization=data.organization||state.org;
+  if(organization && state.orgs.some(org=>org.code===organization)){
+    state.org=organization;
+    localStorage.setItem("kova.pwa.org",state.org);
+    renderOrgOptions($("orgSearchInput").value);
+    orgSelect.value=state.org;
+    state.view="all";
+    document.querySelectorAll("#viewTabs button").forEach(button=>button.classList.toggle("active",button.dataset.view==="all"));
+    await loadEvents();
+  }
+  const found=state.events.find(event=>event.id===data.eventId);
+  if(found){
+    openDetail({...found,changeSummary:data.changeSummary||""});
+    return;
+  }
+  if(data.eventId && data.description){
+    openDetail({
+      id:data.eventId,
+      orgCode:organization,
+      orgName:orgName(organization),
+      dateIso:data.dateIso||"",
+      dateLabel:data.dateLabel||data.dateIso||"",
+      time:data.time||"",
+      type:data.eventType||"Aktivitet",
+      description:data.description,
+      sourceUrl:data.sourceUrl||"https://www.kova.no/",
+      changeSummary:data.changeSummary||""
+    });
+  }
+}
+async function queuedRefresh(){
+  if(!navigator.onLine){
+    localStorage.setItem("kova.pwa.pendingRefresh","1");
+    statusText.textContent="Frakoblet – oppdaterer automatisk når nettet er tilbake";
+    return;
+  }
+  localStorage.removeItem("kova.pwa.pendingRefresh");
+  await loadEvents();
+}
+
 orgSelect.addEventListener("change",async()=>{
   state.org=orgSelect.value;
   localStorage.setItem("kova.pwa.org",state.org);
@@ -1007,9 +1097,38 @@ orgSelect.addEventListener("change",async()=>{
   }
   await loadEvents();
 });
+$("orgSearchInput").addEventListener("input",()=>{
+  renderOrgOptions($("orgSearchInput").value);
+});
+$("favoriteOrgBtn").onclick=()=>{
+  state.favoriteOrgs.has(state.org)?state.favoriteOrgs.delete(state.org):state.favoriteOrgs.add(state.org);
+  saveSet("kova.pwa.favoriteOrgs",state.favoriteOrgs);
+  renderOrgOptions($("orgSearchInput").value);
+  orgSelect.value=state.org;
+  updateFavoriteOrgUi();
+};
+for(const id of ["notifyAdded","notifyChanged","notifyRemoved","quietEnabled","quietStart","quietEnd"]){
+  $(id).addEventListener("change",()=>syncNotificationPreferenceControls().catch(console.warn));
+}
+$("notificationHistoryBtn").onclick=()=>{
+  $("notificationHistory").classList.toggle("hidden");
+  requestNotificationHistory();
+};
+document.querySelectorAll(".quick-nav button[data-scroll]").forEach(button=>{
+  button.onclick=()=>$(button.dataset.scroll)?.scrollIntoView({behavior:"smooth",block:"start"});
+});
+document.querySelectorAll(".quick-nav button[data-view-jump]").forEach(button=>{
+  button.onclick=async()=>{
+    state.view=button.dataset.viewJump;
+    state.displayLimit=20;
+    document.querySelectorAll("#viewTabs button").forEach(tab=>tab.classList.toggle("active",tab.dataset.view===state.view));
+    await loadEvents();
+    $("orgTitle").scrollIntoView({behavior:"smooth",block:"start"});
+  };
+});
 typeSelect.addEventListener("change",()=>{state.type=typeSelect.value;state.displayLimit=20;render()});
 searchInput.addEventListener("input",()=>{state.search=searchInput.value;state.displayLimit=20;render()});
-$("refreshBtn").onclick=loadEvents;
+$("refreshBtn").onclick=queuedRefresh;
 $("followBtn").onclick=async()=>{
   state.followed.has(state.org)?state.followed.delete(state.org):state.followed.add(state.org);
   saveSet("kova.pwa.followed",state.followed);
@@ -1080,7 +1199,14 @@ async function refreshOnForeground(){
   }
   await repairPushOnResume();
 }
-window.addEventListener("online",()=>{updateConnection();refreshOnForeground()});
+window.addEventListener("online",()=>{
+  updateConnection();
+  if(localStorage.getItem("kova.pwa.pendingRefresh")==="1"){
+    queuedRefresh().catch(()=>{});
+  }else{
+    refreshOnForeground();
+  }
+});
 window.addEventListener("offline",updateConnection);
 window.addEventListener("focus",refreshOnForeground);
 document.addEventListener("visibilitychange",()=>{
@@ -1103,6 +1229,8 @@ if(isIOS()&&!isStandalone())$("installHint").classList.remove("hidden");
 if("serviceWorker" in navigator){
   navigator.serviceWorker.addEventListener("message",event=>{
     if(event.data?.type==="pwa-updated") repairPushOnResume();
+    if(event.data?.type==="notificationclick") openNotificationTarget(event.data).catch(console.warn);
+    if(event.data?.type==="notification-history-response") renderNotificationHistory(event.data.items||[]);
   });
   navigator.serviceWorker.register("./sw.js").then(async registration=>{
     try{await registration.update()}catch{}
@@ -1118,12 +1246,20 @@ if("serviceWorker" in navigator){
   updateConnection();
   try{
     await loadOrganizations();
+    updateNotificationSettingsUi();
     const reloading=await checkRemoteCacheEpoch();
     if(reloading)return;
     await loadEvents();
     await refreshFavoriteDashboard();
     await repairPushRegistration();
     await refreshNotificationUi();
+    const params=new URLSearchParams(location.search);
+    if(params.get("event")){
+      await openNotificationTarget({
+        organization:params.get("org")||state.org,
+        eventId:params.get("event")||""
+      });
+    }
   }catch(error){
     statusText.textContent=error.message||"Oppstart feilet";
   }
