@@ -48,10 +48,37 @@ async function fetchJson(path){
   if(!response.ok)throw new Error(`HTTP ${response.status}`);
   return response.json();
 }
+function dateValue(value){
+  if(!value)return null;
+  if(typeof value?.toDate==="function")return value.toDate();
+  const date=new Date(value);
+  return Number.isNaN(date.getTime())?null:date;
+}
 function fmt(value){
-  if(!value)return "–";
-  try{return new Intl.DateTimeFormat("nb-NO",{dateStyle:"short",timeStyle:"short"}).format(new Date(value))}
-  catch{return value}
+  const date=dateValue(value);
+  if(!date)return "–";
+  return new Intl.DateTimeFormat("nb-NO",{dateStyle:"short",timeStyle:"short"}).format(date);
+}
+function ageMinutes(value){
+  const date=dateValue(value);
+  return date?Math.max(0,(Date.now()-date.getTime())/60000):Infinity;
+}
+function healthState(runtime){
+  if(!runtime?.lastRunAt)return {level:"unknown",label:"Ukjent",hint:"Venter på første live Bridge-status."};
+  const age=ageMinutes(runtime.lastRunAt);
+  if(runtime.status==="error"||age>30)return {level:"error",label:"Feil",hint:`Siste Bridge-kjøring: ${fmt(runtime.lastRunAt)}`};
+  if(runtime.status==="degraded"||age>12||Number(runtime.pendingPushes||0)>0){
+    return {level:"warning",label:"Advarsel",hint:`Siste Bridge-kjøring: ${fmt(runtime.lastRunAt)}`};
+  }
+  return {level:"ok",label:"Grønn",hint:`Bridge kjørte ${fmt(runtime.lastRunAt)}`};
+}
+function renderSystemHealth(runtime){
+  const state=healthState(runtime);
+  const card=$("systemHealth");
+  card.classList.remove("health-ok","health-warning","health-error","health-unknown");
+  card.classList.add("health-"+state.level);
+  $("systemHealthLabel").textContent=state.label;
+  $("systemHealthHint").textContent=state.hint;
 }
 async function ensureProfile(user){
   const f=await initFirebase();
@@ -132,68 +159,114 @@ $("passwordForm").addEventListener("submit",async event=>{
 });
 
 async function loadOrganizations(){
-  const organizations=await fetchJson(`${DATA_BASE}/organizations.json`);
-  const corps=organizations.organizations.filter(o=>o.category==="hjelpekorps");
-  const results=await Promise.allSettled(corps.map(async org=>{
-    const safe=org.code.replace(/[^A-Za-z0-9._-]+/g,"_").replace(/^_+|_+$/g,"");
-    const payload=await fetchJson(`${DATA_BASE}/${encodeURIComponent(safe)}.json`);
-    return {
-      name:org.name,code:org.code,status:payload.status||"ok",
-      eventCount:(payload.events||[]).length,updatedAt:payload.updatedAt||""
-    };
-  }));
+  const index=await fetchJson(`${DATA_BASE}/index.json`);
+  const rows=(index.organizations||[]).filter(o=>o.category==="hjelpekorps");
   return {
-    count:corps.length,
-    rows:results.map((r,i)=>r.status==="fulfilled"?r.value:{
-      name:corps[i].name,code:corps[i].code,status:"error",eventCount:0,updatedAt:""
-    })
+    count:rows.length,
+    rows:rows.map(org=>({
+      name:org.name,
+      code:org.code,
+      status:org.status||"unknown",
+      eventCount:Number(org.eventCount||0),
+      updatedAt:org.updatedAt||"",
+      lastCheckedAt:"",
+      error:null
+    }))
   };
 }
 function renderOrgRows(){
   const q=$("orgSearch").value.trim().toLowerCase();
   $("orgRows").innerHTML=currentOrgRows.filter(row=>
     !q||row.name.toLowerCase().includes(q)||row.code.toLowerCase().includes(q)
-  ).map(row=>`<tr>
-    <td><strong>${escapeHtml(row.name)}</strong><br><span class="muted">${escapeHtml(row.code)}</span></td>
-    <td class="${row.status==="ok"?"status-ok":"status-error"}">${escapeHtml(row.status)}</td>
-    <td>${row.eventCount}</td>
-    <td>${escapeHtml(fmt(row.updatedAt))}</td>
-  </tr>`).join("");
+  ).map(row=>{
+    const age=ageMinutes(row.lastCheckedAt);
+    const freshness=!Number.isFinite(age)?"Venter":age>35?"Gammel":age>25?"Snart gammel":"Fersk";
+    const statusClass=row.status==="error"?"status-error":age>35?"status-warning":"status-ok";
+    const statusText=row.status==="error"?"Feil":freshness;
+    return `<tr>
+      <td><strong>${escapeHtml(row.name)}</strong><br><span class="muted">${escapeHtml(row.code)}</span></td>
+      <td class="${statusClass}">${escapeHtml(statusText)}</td>
+      <td>${row.eventCount}</td>
+      <td>${escapeHtml(fmt(row.lastCheckedAt))}</td>
+      <td>${escapeHtml(fmt(row.updatedAt))}</td>
+    </tr>`;
+  }).join("");
 }
 function escapeHtml(v=""){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
 
 async function loadDashboard(){
   const f=await initFirebase();
   $("lastRefresh").textContent="Oppdaterer…";
-  const [health,orgData,release,pushSnap,cacheSnap]=await Promise.all([
+  const [health,orgData,release,pushSnap,cacheSnap,runtimeSnap,commandSnap]=await Promise.all([
     fetchJson(`${DATA_BASE}/health.json`),
     loadOrganizations(),
     fetchJson(`${DATA_BASE}/app-update.json`),
     f.getDocs(f.collection(f.db,"webPushSubscriptions")),
-    f.getDoc(f.doc(f.db,"publicConfig","pwa"))
+    f.getDoc(f.doc(f.db,"publicConfig","pwa")),
+    f.getDoc(f.doc(f.db,"adminRuntime","bridge")),
+    f.getDoc(f.doc(f.db,"adminCommands","bridgeSync"))
   ]);
 
-  currentOrgRows=orgData.rows.sort((a,b)=>a.name.localeCompare(b.name,"nb"));
+  const runtime=runtimeSnap.exists()?runtimeSnap.data():null;
+  const checks=Object.values(runtime?.organizationChecks||{});
+  const checkByCode=new Map(checks.map(item=>[item.code,item]));
+  currentOrgRows=orgData.rows.map(row=>{
+    const check=checkByCode.get(row.code);
+    return {
+      ...row,
+      lastCheckedAt:check?.checkedAt||"",
+      error:check?.error||null,
+      status:check?.status==="error"?"error":row.status
+    };
+  }).sort((a,b)=>a.name.localeCompare(b.name,"nb"));
   renderOrgRows();
+  renderSystemHealth(runtime);
+
   const enabled=[...pushSnap.docs].filter(d=>d.data().enabled!==false).length;
   const totalEvents=currentOrgRows.reduce((sum,row)=>sum+row.eventCount,0);
   const cache=cacheSnap.exists()?cacheSnap.data():{cacheEpoch:0};
+  const command=commandSnap.exists()?commandSnap.data():null;
 
-  $("bridgeStatus").textContent=health.status||"–";
-  $("bridgeTime").textContent=fmt(health.lastFullySuccessfulRunAt||health.checkedAt);
+  $("bridgeStatus").textContent=runtime?.status||health.status||"–";
+  $("bridgeTime").textContent=fmt(runtime?.lastRunAt||health.lastFullySuccessfulRunAt||health.checkedAt);
   $("corpsCount").textContent=orgData.count;
   $("eventTotal").textContent=totalEvents;
   $("pwaDevices").textContent=pushSnap.size;
   $("pwaActive").textContent=`${enabled} aktive abonnement`;
-  $("pendingPush").textContent=health.pendingPushes??"–";
+  $("pendingPush").textContent=runtime?.pendingPushes??health.pendingPushes??"–";
   $("lastPush").textContent=health.lastPushAt?`sist ${fmt(health.lastPushAt)} • ${health.lastPushCount??0}`:"ingen push registrert";
   $("androidVersion").textContent=(release.tagName||"–").replace(/^v/,"");
   $("cacheEpoch").textContent=cache.cacheEpoch??"–";
-  $("polledThisRun").textContent=health.polledThisRun??"–";
+  $("polledThisRun").textContent=runtime?.polledThisRun??health.polledThisRun??"–";
+  $("bridgeSyncStatus").textContent=command
+    ? `Status: ${command.status||"ukjent"}${command.completedAt?" • ferdig "+fmt(command.completedAt):command.startedAt?" • startet "+fmt(command.startedAt):command.requestedAt?" • bedt om "+fmt(command.requestedAt):""}`
+    : "Ingen aktiv synkforespørsel.";
   $("lastRefresh").textContent="Oppdatert "+new Intl.DateTimeFormat("nb-NO",{timeStyle:"medium"}).format(new Date());
 }
 
 $("refreshBtn").onclick=()=>loadDashboard().catch(e=>$("lastRefresh").textContent="Oppdatering feilet: "+e.message);
+$("bridgeSyncBtn").onclick=async()=>{
+  const f=await initFirebase();
+  const button=$("bridgeSyncBtn");
+  button.disabled=true;
+  $("bridgeSyncStatus").textContent="Sender synkforespørsel…";
+  try{
+    const requestId=(crypto.randomUUID?.()||String(Date.now())+"-"+Math.random().toString(16).slice(2));
+    await f.setDoc(f.doc(f.db,"adminCommands","bridgeSync"),{
+      action:"bridgeSync",
+      status:"requested",
+      requestId,
+      requestedBy:"superuser",
+      requestedAt:f.serverTimestamp()
+    });
+    $("bridgeSyncStatus").textContent="Synk er bestilt. Bridge plukker den opp på neste 5-minuttersrunde.";
+    setTimeout(()=>loadDashboard().catch(()=>{}),5000);
+  }catch(error){
+    $("bridgeSyncStatus").textContent="Kunne ikke bestille synk: "+(error.message||String(error));
+  }finally{
+    button.disabled=false;
+  }
+};
 $("orgSearch").addEventListener("input",renderOrgRows);
 $("signOutBtn").onclick=async()=>{
   const f=await initFirebase();await f.signOut(f.auth);show("loginView");
