@@ -160,3 +160,38 @@ test("KOVA PWA stores local notes per event", async () => {
   assert.ok(app.includes("saveNote"));
   assert.ok(app.includes("noteFor"));
 });
+
+
+test("KOVA PWA Mine vakter reminders use Bridge-backed Web Push", async () => {
+  const html = await readFile("apps/kova/index.html", "utf8");
+  const app = await readFile("apps/kova/app.js", "utf8");
+  assert.ok(html.includes('id="reminderSelect"'));
+  assert.ok(app.includes('"webPushReminders"'));
+  assert.ok(app.includes("syncReminderBackend"));
+  assert.ok(app.includes("reminderToken"));
+  assert.ok(app.includes("syncAllReminders"));
+});
+
+test("KOVA PWA relinks favorites when KOVA changes event ids", async () => {
+  const app = await readFile("apps/kova/app.js", "utf8");
+  assert.ok(app.includes("favoriteMeta"));
+  assert.ok(app.includes("reconcileFavorites"));
+  assert.ok(app.includes("migrateFavorite"));
+  assert.ok(app.includes("semanticKey"));
+});
+
+test("KOVA PWA scales Mine vakter with paging and month groups", async () => {
+  const html = await readFile("apps/kova/index.html", "utf8");
+  const app = await readFile("apps/kova/app.js", "utf8");
+  assert.ok(html.includes('id="loadMoreBtn"'));
+  assert.ok(app.includes("displayLimit"));
+  assert.ok(app.includes("event-group"));
+  assert.ok(app.includes("state.displayLimit+=20"));
+});
+
+test("KOVA PWA includes selected reminder in calendar export", async () => {
+  const app = await readFile("apps/kova/app.js", "utf8");
+  assert.ok(app.includes("BEGIN:VALARM"));
+  assert.ok(app.includes("TRIGGER:-PT"));
+  assert.ok(app.includes("reminderMinutesFor(event)"));
+});
