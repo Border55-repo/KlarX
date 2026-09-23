@@ -120,6 +120,24 @@ async function syncPushOrganizations(){
   }
 }
 
+async function repairPushRegistration(){
+  if(!pushSupported()) return false;
+  if(isIOS() && !isStandalone()) return false;
+  if(Notification.permission!=="granted") return false;
+
+  const subscription=await currentPushSubscription();
+  if(!subscription) return false;
+
+  try{
+    await savePushSubscription(subscription,true);
+    return true;
+  }catch(error){
+    console.warn("Automatisk backend-registrering av push feilet",error);
+    localStorage.removeItem("kova.pwa.pushRegisteredAt");
+    return false;
+  }
+}
+
 async function refreshNotificationUi(){
   const button=$("notificationBtn");
   const status=$("notificationStatus");
@@ -464,6 +482,7 @@ if("serviceWorker" in navigator){
   try{
     await loadOrganizations();
     await loadEvents();
+    await repairPushRegistration();
     await refreshNotificationUi();
   }catch(error){
     statusText.textContent=error.message||"Oppstart feilet";
