@@ -117,7 +117,9 @@ test("KOVA PWA keeps a network-first offline fallback for Bridge data", async ()
   assert.ok(sw.includes('url.hostname==="raw.githubusercontent.com"'));
   assert.ok(sw.includes('/bridge/data/'));
   assert.ok(sw.includes('fetch(event.request)'));
-  assert.ok(sw.includes('caches.match(event.request)'));
+  assert.ok(sw.includes('searchParams.delete("ts")'));
+  assert.ok(sw.includes('cache.put(cacheKey'));
+  assert.ok(sw.includes('caches.match(cacheKey)'));
 });
 
 test("KOVA PWA calendar export builds a valid local ICS event", async () => {
