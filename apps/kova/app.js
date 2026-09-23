@@ -11,8 +11,11 @@ const state = {
   search: "",
   type: "",
   favorites: new Set(JSON.parse(localStorage.getItem("kova.pwa.favorites") || "[]")),
+  favoriteMeta: JSON.parse(localStorage.getItem("kova.pwa.favoriteMeta") || "{}"),
   notes: JSON.parse(localStorage.getItem("kova.pwa.notes") || "{}"),
+  reminders: JSON.parse(localStorage.getItem("kova.pwa.reminders") || "{}"),
   favoriteEvents: [],
+  displayLimit: 20,
   followed: new Set(JSON.parse(localStorage.getItem("kova.pwa.followed") || '["UllensakerRKH"]')),
   selected: null,
 };
@@ -36,13 +39,104 @@ function displayTime(value=""){
   return t;
 }
 function saveSet(key,set){localStorage.setItem(key,JSON.stringify([...set]))}
+function saveFavoriteMeta(){localStorage.setItem("kova.pwa.favoriteMeta",JSON.stringify(state.favoriteMeta))}
 function saveNotes(){localStorage.setItem("kova.pwa.notes",JSON.stringify(state.notes))}
+function saveReminders(){localStorage.setItem("kova.pwa.reminders",JSON.stringify(state.reminders))}
+function normalizeText(value=""){return String(value).trim().toLowerCase().replace(/\s+/g," ")}
+function semanticKey(event){return normalizeText(event.type)+"|"+normalizeText(event.description)}
 function noteFor(event){return state.notes[eventKey(event)]||""}
 function saveNote(event,value){
   const key=eventKey(event);
   if(value.trim())state.notes[key]=value;
   else delete state.notes[key];
   saveNotes();
+}
+function favoriteMetaFor(event){
+  const key=eventKey(event);
+  const existing=state.favoriteMeta[key]||{};
+  return {
+    orgCode:event.orgCode||state.org,
+    eventId:event.id,
+    semanticKey:semanticKey(event),
+    anchorDate:existing.anchorDate||event.dateIso||"",
+    dateIso:event.dateIso||"",
+    time:event.time||"",
+    description:event.description||"",
+    type:event.type||""
+  };
+}
+function rememberFavoriteEvent(event){
+  const key=eventKey(event);
+  state.favoriteMeta[key]=favoriteMetaFor(event);
+  saveFavoriteMeta();
+}
+function reminderEntryFor(event){
+  const raw=state.reminders[eventKey(event)];
+  if(!raw)return null;
+  if(typeof raw==="number")return {leadMinutes:raw,anchorDate:event.dateIso||""};
+  return raw;
+}
+function reminderMinutesFor(event){return Number(reminderEntryFor(event)?.leadMinutes||0)}
+function reminderLabel(minutes){
+  if(!minutes)return "Ingen";
+  if(minutes%(24*60)===0){
+    const days=minutes/(24*60); return days===1?"1 dag":days+" dager";
+  }
+  if(minutes%60===0){
+    const hours=minutes/60; return hours===1?"1 time":hours+" timer";
+  }
+  return minutes+" minutter";
+}
+function dateDistanceDays(a,b){
+  if(!a||!b)return Infinity;
+  const x=new Date(a+"T00:00:00"),y=new Date(b+"T00:00:00");
+  return Math.abs(x-y)/86400000;
+}
+function migrateFavorite(oldKey,event){
+  const newKey=eventKey(event);
+  if(oldKey===newKey)return false;
+  const oldMeta=state.favoriteMeta[oldKey]||{};
+  state.favorites.delete(oldKey);
+  state.favorites.add(newKey);
+  if(Object.prototype.hasOwnProperty.call(state.notes,oldKey)){
+    state.notes[newKey]=state.notes[oldKey];
+    delete state.notes[oldKey];
+  }
+  if(Object.prototype.hasOwnProperty.call(state.reminders,oldKey)){
+    state.reminders[newKey]=state.reminders[oldKey];
+    delete state.reminders[oldKey];
+  }
+  delete state.favoriteMeta[oldKey];
+  state.favoriteMeta[newKey]={
+    ...favoriteMetaFor(event),
+    anchorDate:oldMeta.anchorDate||oldMeta.dateIso||event.dateIso||""
+  };
+  saveSet("kova.pwa.favorites",state.favorites);
+  saveFavoriteMeta(); saveNotes(); saveReminders();
+  return true;
+}
+function reconcileFavorites(code,events){
+  const byKey=new Map(events.map(event=>[eventKey(event),event]));
+  let changed=false;
+  for(const key of [...state.favorites].filter(item=>item.startsWith(code+"|"))){
+    const exact=byKey.get(key);
+    if(exact){
+      const before=JSON.stringify(state.favoriteMeta[key]||{});
+      state.favoriteMeta[key]=favoriteMetaFor(exact);
+      if(JSON.stringify(state.favoriteMeta[key])!==before)changed=true;
+      continue;
+    }
+    const meta=state.favoriteMeta[key];
+    if(!meta?.semanticKey)continue;
+    const candidates=events
+      .filter(event=>semanticKey(event)===meta.semanticKey)
+      .map(event=>({event,distance:dateDistanceDays(meta.dateIso||meta.anchorDate,event.dateIso)}))
+      .sort((a,b)=>a.distance-b.distance);
+    if(candidates.length && candidates[0].distance<=14){
+      changed=migrateFavorite(key,candidates[0].event)||changed;
+    }
+  }
+  if(changed)saveFavoriteMeta();
 }
 function dateInRange(dateIso,days){
   if(!dateIso)return false;
@@ -67,6 +161,15 @@ async function endpointId(endpoint){
   const bytes=new TextEncoder().encode(endpoint);
   const hash=await crypto.subtle.digest("SHA-256",bytes);
   return [...new Uint8Array(hash)].map(byte=>byte.toString(16).padStart(2,"0")).join("");
+}
+function reminderToken(){
+  let token=localStorage.getItem("kova.pwa.reminderToken");
+  if(token)return token;
+  const bytes=new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  token=[...bytes].map(value=>value.toString(16).padStart(2,"0")).join("");
+  localStorage.setItem("kova.pwa.reminderToken",token);
+  return token;
 }
 
 async function firestoreClient(){
