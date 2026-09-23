@@ -42,7 +42,7 @@ test("KOVA PWA uses the official Firebase Web SDK for subscription storage", asy
 
 test("KOVA PWA repairs push when returning to foreground", async () => {
   const app = await readFile("apps/kova/app.js", "utf8");
-  assert.ok(app.includes('window.addEventListener("focus",repairPushOnResume)'));
+  assert.ok(app.includes('window.addEventListener("focus",refreshOnForeground)'));
   assert.ok(app.includes('registration.update()'));
   assert.ok(app.includes('controllerchange'));
 });
