@@ -30,3 +30,11 @@ test("KOVA PWA auto-repairs an existing push subscription on startup", async () 
   assert.ok(app.includes("async function repairPushRegistration"));
   assert.ok(app.includes("await repairPushRegistration();"));
 });
+
+
+test("KOVA PWA uses the official Firebase Web SDK for subscription storage", async () => {
+  const app = await readFile("apps/kova/app.js", "utf8");
+  assert.ok(app.includes("firebase-firestore.js"));
+  assert.ok(app.includes("firebase.setDoc"));
+  assert.ok(!app.includes("documents:commit"));
+});
