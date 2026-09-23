@@ -590,13 +590,30 @@ function filteredEvents(){
 }
 function render(){
   eventsEl.innerHTML="";
-  const list=filteredEvents();
-  $("eventCount").textContent=list.length;
-  emptyEl.classList.toggle("hidden",list.length!==0);
+  const all=filteredEvents();
+  const list=state.view==="favorites" ? all.slice(0,state.displayLimit) : all;
+  $("eventCount").textContent=all.length;
+  emptyEl.classList.toggle("hidden",all.length!==0);
+  $("loadMoreBtn").classList.toggle("hidden",state.view!=="favorites"||list.length>=all.length);
+  $("loadMoreBtn").textContent=list.length<all.length ? `Vis flere (${all.length-list.length} igjen)` : "Vis flere";
   renderEverydayDashboard();
-  const multi=state.view==="followed";
+  const multi=state.view==="followed"||state.view==="favorites";
+  let lastGroup="";
 
   for(const event of list){
+    if(state.view==="favorites"){
+      const date=new Date((event.dateIso||"")+"T00:00:00");
+      const group=Number.isNaN(date.getTime())
+        ? "Uten dato"
+        : new Intl.DateTimeFormat("nb-NO",{month:"long",year:"numeric"}).format(date);
+      if(group!==lastGroup){
+        const heading=document.createElement("div");
+        heading.className="event-group";
+        heading.textContent=group;
+        eventsEl.appendChild(heading);
+        lastGroup=group;
+      }
+    }
     const node=template.content.cloneNode(true);
     node.querySelector(".type").textContent=event.type||"Aktivitet";
     node.querySelector(".description").textContent=event.description||"KOVA-aktivitet";
@@ -606,16 +623,30 @@ function render(){
     chip.classList.toggle("hidden",!multi);
     const fav=node.querySelector(".favorite");
     fav.textContent=state.favorites.has(eventKey(event)) ? "★" : "☆";
-    fav.onclick=()=>{
-      const key=eventKey(event);
-      state.favorites.has(key)?state.favorites.delete(key):state.favorites.add(key);
-      saveSet("kova.pwa.favorites",state.favorites);
-      render();
-      refreshFavoriteDashboard().catch(()=>{});
-    };
+    fav.onclick=async()=>{await toggleFavorite(event)};
     node.querySelector(".event-main").onclick=()=>openDetail(event);
     eventsEl.appendChild(node);
   }
+}
+async function toggleFavorite(event){
+  const key=eventKey(event);
+  if(state.favorites.has(key)){
+    const current=reminderEntryFor(event);
+    if(current)await syncReminderBackend(event,current.leadMinutes,false).catch(()=>false);
+    state.favorites.delete(key);
+    delete state.favoriteMeta[key];
+    delete state.reminders[key];
+    saveSet("kova.pwa.favorites",state.favorites);
+    saveFavoriteMeta();
+    saveReminders();
+  }else{
+    state.favorites.add(key);
+    rememberFavoriteEvent(event);
+    saveSet("kova.pwa.favorites",state.favorites);
+  }
+  updateDialogFavorite();
+  render();
+  await refreshFavoriteDashboard().catch(()=>{});
 }
 function openDetail(event){
   state.selected=event;
@@ -626,11 +657,31 @@ function openDetail(event){
   $("detailNote").value=noteFor(event);
   $("detailKovaLink").href=event.sourceUrl||"https://www.kova.no/";
   updateDialogFavorite();
+  updateReminderUi();
   $("detailDialog").showModal();
 }
 function updateDialogFavorite(){
   if(!state.selected)return;
-  $("favoriteDialogBtn").textContent=state.favorites.has(eventKey(state.selected)) ? "★ Fjern favoritt" : "☆ Legg til favoritt";
+  const favorite=state.favorites.has(eventKey(state.selected));
+  $("favoriteDialogBtn").textContent=favorite ? "★ Fjern favoritt" : "☆ Legg til favoritt";
+  $("reminderSelect").disabled=!favorite||!eventTime(state.selected);
+}
+function updateReminderUi(message=""){
+  if(!state.selected)return;
+  const favorite=state.favorites.has(eventKey(state.selected));
+  const hasTime=!!eventTime(state.selected);
+  $("reminderSelect").value=String(reminderMinutesFor(state.selected)||0);
+  if(message){
+    $("reminderHint").textContent=message;
+  }else if(!favorite){
+    $("reminderHint").textContent="Legg vakten til Mine vakter først.";
+  }else if(!hasTime){
+    $("reminderHint").textContent="KOVA må ha klokkeslett før push-påminnelse kan planlegges.";
+  }else if(Notification.permission==="granted"&&localStorage.getItem("kova.pwa.pushRegisteredAt")){
+    $("reminderHint").textContent="Push-påminnelse er koblet til Bridge og tas også med i kalenderfilen.";
+  }else{
+    $("reminderHint").textContent="Valget lagres og tas med i kalender. Aktiver varsler for push-påminnelse.";
+  }
 }
 async function fetchJson(url){
   const separator=url.includes("?")?"&":"?";
