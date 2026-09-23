@@ -3,6 +3,7 @@ const ADMIN_EMAIL="superuser@kova-companion.local";
 const $=id=>document.getElementById(id);
 let firebase=null;
 let currentOrgRows=[];
+let dashboardTimer=null;
 
 async function initFirebase(){
   if(firebase)return firebase;
@@ -36,6 +37,7 @@ async function initFirebase(){
 }
 
 function show(id){
+  if(id!=="dashboardView"&&dashboardTimer){clearTimeout(dashboardTimer);dashboardTimer=null}
   for(const name of ["loginView","passwordView","dashboardView"])$(name).classList.toggle("hidden",name!==id);
 }
 function err(id,message=""){
@@ -79,6 +81,67 @@ function renderSystemHealth(runtime){
   card.classList.add("health-"+state.level);
   $("systemHealthLabel").textContent=state.label;
   $("systemHealthHint").textContent=state.hint;
+}
+
+function bridgeCommandView(command){
+  const status=command?.status||"idle";
+  if(status==="requested"){
+    return {
+      busy:true,
+      button:"Synk bestilt",
+      className:"muted status-warning",
+      text:`Bestilt ${fmt(command.requestedAt)} • venter på neste Bridge-runde.`
+    };
+  }
+  if(status==="running"){
+    return {
+      busy:true,
+      button:"Bridge synker…",
+      className:"muted status-warning",
+      text:`Kjører nå • startet ${fmt(command.startedAt)}.`
+    };
+  }
+  if(status==="completed"){
+    return {
+      busy:false,
+      button:"Be om Bridge-synk",
+      className:"muted status-ok",
+      text:`Ferdig ${fmt(command.completedAt)} • ${command.polled??"–"} korps • ${command.failures??0} feil.`
+    };
+  }
+  if(status==="failed"){
+    return {
+      busy:false,
+      button:"Prøv Bridge-synk igjen",
+      className:"muted status-error",
+      text:`Synk feilet ${fmt(command.completedAt)} • ${command.polled??"–"} korps • ${command.failures??"–"} feil.`
+    };
+  }
+  return {
+    busy:false,
+    button:"Be om Bridge-synk",
+    className:"muted",
+    text:"Ingen aktiv synkforespørsel."
+  };
+}
+function renderBridgeSync(command){
+  const view=bridgeCommandView(command);
+  const status=$("bridgeSyncStatus");
+  const button=$("bridgeSyncBtn");
+  status.className=view.className;
+  status.textContent=view.text;
+  button.disabled=view.busy;
+  button.textContent=view.button;
+}
+function scheduleDashboardRefresh(command){
+  if(dashboardTimer)clearTimeout(dashboardTimer);
+  if($("dashboardView").classList.contains("hidden"))return;
+  const active=["requested","running"].includes(command?.status);
+  dashboardTimer=setTimeout(()=>{
+    loadDashboard().catch(error=>{
+      $("lastRefresh").textContent="Automatisk oppdatering feilet: "+(error.message||String(error));
+    });
+  },active?10000:60000);
 }
 async function ensureProfile(user){
   const f=await initFirebase();
@@ -238,10 +301,9 @@ async function loadDashboard(){
   $("androidVersion").textContent=(release.tagName||"–").replace(/^v/,"");
   $("cacheEpoch").textContent=cache.cacheEpoch??"–";
   $("polledThisRun").textContent=runtime?.polledThisRun??health.polledThisRun??"–";
-  $("bridgeSyncStatus").textContent=command
-    ? `Status: ${command.status||"ukjent"}${command.completedAt?" • ferdig "+fmt(command.completedAt):command.startedAt?" • startet "+fmt(command.startedAt):command.requestedAt?" • bedt om "+fmt(command.requestedAt):""}`
-    : "Ingen aktiv synkforespørsel.";
+  renderBridgeSync(command);
   $("lastRefresh").textContent="Oppdatert "+new Intl.DateTimeFormat("nb-NO",{timeStyle:"medium"}).format(new Date());
+  scheduleDashboardRefresh(command);
 }
 
 $("refreshBtn").onclick=()=>loadDashboard().catch(e=>$("lastRefresh").textContent="Oppdatering feilet: "+e.message);
@@ -249,6 +311,8 @@ $("bridgeSyncBtn").onclick=async()=>{
   const f=await initFirebase();
   const button=$("bridgeSyncBtn");
   button.disabled=true;
+  button.textContent="Bestiller synk…";
+  $("bridgeSyncStatus").className="muted status-warning";
   $("bridgeSyncStatus").textContent="Sender synkforespørsel…";
   try{
     const requestId=(crypto.randomUUID?.()||String(Date.now())+"-"+Math.random().toString(16).slice(2));
@@ -259,12 +323,12 @@ $("bridgeSyncBtn").onclick=async()=>{
       requestedBy:"superuser",
       requestedAt:f.serverTimestamp()
     });
-    $("bridgeSyncStatus").textContent="Synk er bestilt. Bridge plukker den opp på neste 5-minuttersrunde.";
-    setTimeout(()=>loadDashboard().catch(()=>{}),5000);
+    await loadDashboard();
   }catch(error){
+    $("bridgeSyncStatus").className="muted status-error";
     $("bridgeSyncStatus").textContent="Kunne ikke bestille synk: "+(error.message||String(error));
-  }finally{
     button.disabled=false;
+    button.textContent="Prøv Bridge-synk igjen";
   }
 };
 $("orgSearch").addEventListener("input",renderOrgRows);
