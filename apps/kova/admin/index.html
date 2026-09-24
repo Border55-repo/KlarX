@@ -103,7 +103,8 @@
           <label>Tittel<input id="changelogTitle" maxlength="80" placeholder="F.eks. Nytt i KOVA Companion"></label>
           <label>Endringer<textarea id="changelogBody" rows="6" maxlength="2000" placeholder="Beskriv kort hva som er nytt eller rettet."></textarea></label>
           <label><input id="changelogPush" type="checkbox" checked> Send push om endringen</label>
-          <p id="changelogMessage" class="muted"></p>
+          <p id="changelogMessage" class="muted" role="status"></p>
+          <p id="announcementStatus" class="muted" role="status"></p>
         </div>
         <button id="publishChangelogBtn" class="primary">Publiser endringslogg</button>
       </section>

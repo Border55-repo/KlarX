@@ -28,6 +28,7 @@ async function initFirebase(){
     doc:firestoreModule.doc,
     getDoc:firestoreModule.getDoc,
     setDoc:firestoreModule.setDoc,
+    runTransaction:firestoreModule.runTransaction,
     updateDoc:firestoreModule.updateDoc,
     collection:firestoreModule.collection,
     getDocs:firestoreModule.getDocs,
@@ -263,17 +264,35 @@ function renderOrgRows(){
 }
 function escapeHtml(v=""){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
 
+function announcementStatusText(command){
+  if(!command)return "Ingen manuell utsending registrert.";
+  const title=command.title||"Endringslogg";
+  if(command.status==="requested")return `${title}: i kø siden ${fmt(command.requestedAt)}. GitHub-kjøringen kan bli forsinket.`;
+  if(command.status==="running")return `${title}: sender til Android og PWA…`;
+  const delivery=command.delivery;
+  if(!delivery)return `${title}: ${command.status==="failed"?"utsending feilet":"eldre utsending uten separat leveringsstatus"}.`;
+  const android=delivery.android||{};
+  const pwa=delivery.pwa||{};
+  const parts=[`${title}: ${command.status==="failed"?"utsending feilet helt eller delvis":"utsending behandlet"}.`,
+    `Android: ${android.accepted||0}/${android.targets||0} korpskanaler akseptert.`,
+    `PWA: ${pwa.accepted||0}/${pwa.targets||0} abonnement akseptert, ${pwa.failed||0} feil, ${pwa.expired||0} utløpt.`];
+  if(!pwa.targets)parts.push("Ingen aktive PWA-abonnement nådd.");
+  parts.push("Akseptert av push-tjenesten er ikke bekreftelse på visning på telefonen.");
+  return parts.join(" ");
+}
+
 async function loadDashboard(){
   const f=await initFirebase();
   $("lastRefresh").textContent="Oppdaterer…";
-  const [health,orgData,release,pushSnap,cacheSnap,runtimeSnap,commandSnap]=await Promise.all([
+  const [health,orgData,release,pushSnap,cacheSnap,runtimeSnap,commandSnap,announcementSnap]=await Promise.all([
     fetchJson(`${DATA_BASE}/health.json`),
     loadOrganizations(),
     fetchJson(`${DATA_BASE}/app-update.json`),
     f.getDocs(f.collection(f.db,"webPushSubscriptions")),
     f.getDoc(f.doc(f.db,"publicConfig","pwa")),
     f.getDoc(f.doc(f.db,"adminRuntime","bridge")),
-    f.getDoc(f.doc(f.db,"adminCommands","bridgeSync"))
+    f.getDoc(f.doc(f.db,"adminCommands","bridgeSync")),
+    f.getDoc(f.doc(f.db,"adminCommands","announcement"))
   ]);
 
   const runtime=runtimeSnap.exists()?runtimeSnap.data():null;
@@ -308,8 +327,10 @@ async function loadDashboard(){
   $("cacheEpoch").textContent=cache.cacheEpoch??"–";
   $("polledThisRun").textContent=runtime?.polledThisRun??health.polledThisRun??"–";
   renderBridgeSync(command);
+  const announcement=announcementSnap.exists()?announcementSnap.data():null;
+  $("announcementStatus").textContent=announcementStatusText(announcement);
   $("lastRefresh").textContent="Oppdatert "+new Intl.DateTimeFormat("nb-NO",{timeStyle:"medium"}).format(new Date());
-  scheduleDashboardRefresh(command);
+  scheduleDashboardRefresh(["requested","running"].includes(announcement?.status)?announcement:command);
 }
 
 $("refreshBtn").onclick=()=>loadDashboard().catch(e=>$("lastRefresh").textContent="Oppdatering feilet: "+e.message);
@@ -349,17 +370,27 @@ $("publishChangelogBtn").onclick=async()=>{
   message.textContent="Publiserer…";
   try{
     const payload={id,title,body,publishedAt:f.serverTimestamp(),publishedBy:"superuser",sendPush};
-    await f.setDoc(f.doc(f.db,"changelog",id),payload);
-    await f.setDoc(f.doc(f.db,"publicConfig","changelog"),{latestId:id,title,body,updatedAt:f.serverTimestamp()});
-    if(sendPush){
-      await f.setDoc(f.doc(f.db,"adminCommands","announcement"),{
+    await f.runTransaction(f.db,async transaction=>{
+      const commandRef=f.doc(f.db,"adminCommands","announcement");
+      if(sendPush){
+        const existing=await transaction.get(commandRef);
+        if(existing.exists() && ["requested","running"].includes(existing.data().status)){
+          throw new Error("En utsending venter fortsatt. Vent til den er ferdig før du sender en ny.");
+        }
+      }
+      transaction.set(f.doc(f.db,"changelog",id),payload);
+      transaction.set(f.doc(f.db,"publicConfig","changelog"),{latestId:id,title,body,updatedAt:f.serverTimestamp()});
+      if(sendPush)transaction.set(commandRef,{
         action:"announcement",status:"requested",requestId:id,title,
         body:body.length>180?body.slice(0,177)+"…":body,
         topic:"kova_all_users",requestedBy:"superuser",requestedAt:f.serverTimestamp(),
         source:"changelog"
       });
-      message.textContent="Endringsloggen er publisert og push er bestilt.";
-    }else message.textContent="Endringsloggen er publisert uten push.";
+    });
+    message.textContent=sendPush
+      ? "Endringsloggen er publisert. Push venter på neste Bridge-kjøring; status vises under."
+      : "Endringsloggen er publisert uten push.";
+    await loadDashboard();
     $("changelogTitle").value="";$("changelogBody").value="";
   }catch(error){message.textContent="Publisering feilet: "+(error.message||String(error))}
   finally{$("publishChangelogBtn").disabled=false}

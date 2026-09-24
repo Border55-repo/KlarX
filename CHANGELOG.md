@@ -1,3 +1,13 @@
+## KOVA PWA 2.1.1 – 2026-09-24
+
+- Vaktvarsler og push-påminnelser gjelder bare favorittkorps. Følg og valgt korps gir ikke abonnement.
+- Push vises selv når historikklagring feiler. Duplikater erstattes via samme varseltag.
+- Endringsloggvarsel åpner riktig side, også når admin er åpent.
+- Admin viser separate resultater for Android og PWA, med tydelig kø- og feilstatus.
+- Publisering skjer atomisk; en ny push kan ikke overskrive en ventende utsending.
+- Admin-navigation kan ikke erstatte brukerappens offline-forside.
+- Regresjonstester kjører service worker-hendelser og kontrollerer reell oppførsel.
+
 # Endringslogg
 
 ## [0.4.0] - 2026-09-08

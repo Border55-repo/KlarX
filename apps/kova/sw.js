@@ -1,4 +1,4 @@
-const CACHE="kova-pwa-v29";
+const CACHE="kova-pwa-v30";
 const SHELL=["./","./index.html","./styles.css","./app.js","./manifest.webmanifest","./icon.svg","./firebase-web-config.json","./privacy.html"];
 const HISTORY_DB="kova-pwa-history";
 const HISTORY_STORE="notifications";
@@ -79,23 +79,33 @@ self.addEventListener("fetch",event=>{
   if(event.request.method!=="GET")return;
   const url=new URL(event.request.url);
 
+  const isAdmin=url.origin===self.location.origin && url.pathname.includes("/kova/admin/");
   if(event.request.mode==="navigate"){
+    // Admin navigation must never replace the offline user-app shell.
+    const navigationKey=isAdmin?event.request:"./index.html";
     event.respondWith(
-      fetch(event.request).then(response=>{
-        const copy=response.clone();
-        caches.open(CACHE).then(cache=>cache.put("./index.html",copy));
+      fetch(event.request).then(async response=>{
+        if(response.ok){
+          const cache=await caches.open(CACHE);
+          await cache.put(navigationKey,response.clone());
+        }
         return response;
-      }).catch(()=>caches.match("./index.html").then(cached=>cached||caches.match("./")))
+      }).catch(async()=>
+        (await caches.match(navigationKey)) ||
+        (!isAdmin && await caches.match("./")) ||
+        new Response("Du er frakoblet. Åpne siden igjen når du har nett.",{status:503})
+      )
     );
     return;
   }
 
-  const isAdmin=url.origin===self.location.origin && url.pathname.includes("/kova/admin/");
   if(isAdmin){
     event.respondWith(
-      fetch(event.request).then(response=>{
-        const copy=response.clone();
-        caches.open(CACHE).then(cache=>cache.put(event.request,copy));
+      fetch(event.request).then(async response=>{
+        if(response.ok){
+          const cache=await caches.open(CACHE);
+          await cache.put(event.request,response.clone());
+        }
         return response;
       }).catch(()=>caches.match(event.request))
     );
@@ -143,15 +153,18 @@ self.addEventListener("notificationclick",event=>{
   const params=new URLSearchParams();
   if(data.organization)params.set("org",data.organization);
   if(data.eventId)params.set("event",data.eventId);
-  const target=data.url||("./"+(params.toString()?"?"+params.toString():""));
-  event.waitUntil(self.clients.matchAll({type:"window",includeUncontrolled:true}).then(list=>{
-    const existing=list.find(client=>"focus" in client);
+  const appUrl=new URL("./",self.location.href);
+  let target=new URL(data.url||("./"+(params.toString()?"?"+params.toString():"")),appUrl);
+  if(target.origin!==appUrl.origin || !target.pathname.startsWith(appUrl.pathname))target=appUrl;
+  event.waitUntil((async()=>{
+    const list=await self.clients.matchAll({type:"window",includeUncontrolled:true});
+    const existing=list.find(client=>new URL(client.url).pathname===appUrl.pathname && "focus" in client);
     if(existing){
-      existing.postMessage({type:"notificationclick",...data});
-      return existing.focus();
+      const navigated=await existing.navigate(target.href);
+      return (navigated||existing).focus();
     }
-    return self.clients.openWindow(target);
-  }));
+    return self.clients.openWindow(target.href);
+  })());
 });
 
 self.addEventListener("push",event=>{
@@ -185,9 +198,6 @@ self.addEventListener("push",event=>{
       changeSummary:payload.changeSummary||""
     };
 
-    const duplicate=await storeNotification(historyItem);
-    if(duplicate)return;
-
     const options={
       body,
       icon:"./icon.svg",
@@ -208,7 +218,12 @@ self.addEventListener("push",event=>{
         changeSummary:historyItem.changeSummary
       }
     };
+    // Every iOS push must display a notification. Use the tag to replace duplicates;
+    // never let IndexedDB errors or history deduplication suppress visible delivery.
     await self.registration.showNotification(title,options);
+    try{await storeNotification(historyItem)}catch(error){
+      console.warn("Kunne ikke lagre varselhistorikk",error);
+    }
   })());
 });
 
