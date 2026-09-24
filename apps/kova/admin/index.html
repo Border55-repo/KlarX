@@ -12,7 +12,7 @@
     <div>
       <p class="eyebrow">KOVA COMPANION</p>
       <h1>KOVA Admin</h1>
-      <p class="version">Adminpanel 1.2</p>
+      <p class="version">Adminpanel 1.3</p>
     </div>
     <a class="ghost" href="../">Til Companion</a>
   </header>
@@ -79,8 +79,9 @@
         <div>
           <span class="label">Drift</span>
           <h2>Bridge-synk</h2>
-          <p class="muted">Be Bridge kjøre en full synk av alle korps. Forespørselen plukkes opp av backend på neste 5-minuttersrunde.</p>
+          <p class="muted">Be Bridge kjøre en full synk av alle korps. Admin forsøker å starte jobben med en gang. Den planlagte kjøringen er reserve; køtid kan forekomme.</p>
           <p id="bridgeSyncStatus" class="muted">Ingen aktiv synkforespørsel.</p>
+          <p id="dispatchStatus" class="muted" role="status"></p>
         </div>
         <button id="bridgeSyncBtn" class="primary">Be om Bridge-synk</button>
       </section>

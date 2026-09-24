@@ -1,3 +1,4 @@
+import {requestDispatch} from './dispatch.js';
 const DATA_BASE="https://raw.githubusercontent.com/Border55-repo/KOVA-Companion-Android/main/bridge/data";
 const ADMIN_EMAIL="superuser@kova-companion.local";
 const $=id=>document.getElementById(id);
@@ -350,7 +351,9 @@ $("bridgeSyncBtn").onclick=async()=>{
       requestedBy:"superuser",
       requestedAt:f.serverTimestamp()
     });
+    const dispatch=await requestDispatch(f.auth.currentUser,"bridgeSync",requestId);
     await loadDashboard();
+    $("dispatchStatus").textContent=dispatch.message;
   }catch(error){
     $("bridgeSyncStatus").className="muted status-error";
     $("bridgeSyncStatus").textContent="Kunne ikke bestille synk: "+(error.message||String(error));
@@ -387,8 +390,9 @@ $("publishChangelogBtn").onclick=async()=>{
         source:"changelog"
       });
     });
+    const dispatch=sendPush?await requestDispatch(f.auth.currentUser,"announcement",id):null;
     message.textContent=sendPush
-      ? "Endringsloggen er publisert. Push venter på neste Bridge-kjøring; status vises under."
+      ? "Endringsloggen er publisert. "+dispatch.message
       : "Endringsloggen er publisert uten push.";
     await loadDashboard();
     $("changelogTitle").value="";$("changelogBody").value="";
