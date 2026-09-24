@@ -117,3 +117,18 @@ for(const favorites of [['UllensakerRKH'],[]]){
     assert.ok(saved.notificationKinds.includes('announcement'));
   });
 }
+
+test('first permission request starts directly in the iPhone tap handler',async()=>{
+  const app=await readFile('apps/kova/app.js','utf8');
+  const fn=app.slice(app.indexOf('async function toggleNotifications('),app.indexOf('function renderOrgOptions('));
+  let prompted=false;
+  const context=vm.createContext({
+    Notification:{permission:'default'},
+    enableNotifications:async()=>{prompted=true},
+    currentPushSubscription:async()=>assert.fail('Must not await subscription lookup before requesting permission'),
+  });
+  vm.runInContext(fn,context);
+  const done=context.toggleNotifications();
+  assert.equal(prompted,true);
+  await done;
+});

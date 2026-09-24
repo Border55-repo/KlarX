@@ -480,6 +480,11 @@ async function disableNotifications(){
 
 async function toggleNotifications(){
   try{
+    // iOS requires the permission prompt directly in the tap handler.
+    if(Notification.permission!=="granted"){
+      await enableNotifications();
+      return;
+    }
     const subscription=await currentPushSubscription();
     const enabled=Notification.permission==="granted" && !!subscription;
     const backendRegistered=enabled && !!localStorage.getItem("kova.pwa.pushRegisteredAt");
