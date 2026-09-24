@@ -30,6 +30,7 @@
     <button data-view-jump="favorites">Mine vakter</button>
     <button data-scroll="notificationSettings">Varsler</button>
     <button data-scroll="controlsCard">Korps</button>
+    <button data-scroll="changelogCard">Endringer</button>
   </nav>
 
   <main class="shell" id="mainContent">
@@ -183,6 +184,12 @@
       <div id="events" class="event-list"></div>
       <div id="empty" class="empty hidden">Ingen aktiviteter matcher valget.</div>
       <button id="loadMoreBtn" class="small load-more hidden">Vis flere</button>
+    </section>
+
+    <section id="changelogCard" class="card">
+      <div class="section-line"><div><span class="label">Endringslogg</span><strong id="changelogTitle">Sjekker siste oppdatering…</strong></div></div>
+      <p id="changelogBody" class="muted">Laster endringslogg…</p>
+      <span id="changelogDate" class="muted"></span>
     </section>
 
     <section class="about card">
