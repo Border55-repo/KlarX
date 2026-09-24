@@ -752,11 +752,12 @@ function renderEverydayDashboard(){
 function filteredEvents(){
   const q=state.search.trim().toLowerCase();
   return state.events.filter(event=>{
+    // KOVA Companion is an operational upcoming-shifts view: never show expired activities.
+    if(!event.dateIso || !dateInRange(event.dateIso,3650))return false;
     if(state.view==="favorites" && !state.favorites.has(eventKey(event)))return false;
     if(state.view==="week" && !dateInRange(event.dateIso,7))return false;
     if(state.view==="month" && !dateInRange(event.dateIso,30))return false;
-    if(state.view==="all" && event.dateIso && !dateInRange(event.dateIso,3650))return false;
-    if(state.type && event.type!==state.type)return false;
+     if(state.type && event.type!==state.type)return false;
     return !q || [event.description,event.type,event.dateLabel,event.time,event.orgName]
       .some(v=>(v||"").toLowerCase().includes(q));
   }).sort((a,b)=>(a.dateIso+a.time).localeCompare(b.dateIso+b.time));
