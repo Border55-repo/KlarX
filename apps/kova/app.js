@@ -34,6 +34,7 @@ const state = {
 const $ = id => document.getElementById(id);
 const orgSelect = $("orgSelect");
 const primaryOrgSelect = $("primaryOrgSelect");
+const activityOrgSelect = $("activityOrgSelect");
 const typeSelect = $("typeSelect");
 const eventsEl = $("events");
 const emptyEl = $("empty");
@@ -189,12 +190,7 @@ function dateInRange(dateIso,days){
 }
 function renderPrimaryOrgSelect(){
   if(!primaryOrgSelect)return;
-  state.activityOrgs.add(state.primaryOrg);
-  state.followed=new Set(state.activityOrgs);
-  const rows=[...state.activityOrgs]
-    .map(code=>state.orgs.find(org=>org.code===code))
-    .filter(Boolean)
-    .sort((a,b)=>a.name.localeCompare(b.name,"nb"));
+  const rows=[...state.orgs].sort((a,b)=>a.name.localeCompare(b.name,"nb"));
   primaryOrgSelect.innerHTML="";
   rows.forEach(o=>{
     const option=document.createElement("option");
@@ -202,6 +198,20 @@ function renderPrimaryOrgSelect(){
     option.selected=o.code===state.primaryOrg;
     primaryOrgSelect.appendChild(option);
   });
+  renderActivityOrgSelect();
+}
+function renderActivityOrgSelect(){
+  if(!activityOrgSelect)return;
+  activityOrgSelect.innerHTML="";
+  [...state.orgs]
+    .filter(o=>o.code!==state.primaryOrg)
+    .sort((a,b)=>a.name.localeCompare(b.name,"nb"))
+    .forEach(o=>{
+      const option=document.createElement("option");
+      option.value=o.code; option.textContent=o.name;
+      option.selected=state.activityOrgs.has(o.code);
+      activityOrgSelect.appendChild(option);
+    });
 }
 function orgName(code){return state.orgs.find(o=>o.code===code)?.name || code}
 function updateConnection(){
@@ -1351,10 +1361,26 @@ if("serviceWorker" in navigator){
 
 if(primaryOrgSelect){
   primaryOrgSelect.addEventListener("change", async event=>{
+    const previous=state.primaryOrg;
     setPrimaryOrg(event.target.value);
-    if(orgSelect){ orgSelect.value=event.target.value; }
+    if(previous!==state.primaryOrg && previous) state.activityOrgs.delete(previous);
+    state.activityOrgs.add(state.primaryOrg);
+    saveSet("kova.pwa.activityOrgs",state.activityOrgs);
+    saveSet("kova.pwa.followed",state.activityOrgs);
+    renderPrimaryOrgSelect();
     state.view="primary";
     document.querySelectorAll("#viewTabs button").forEach(b=>b.classList.toggle("active",b.dataset.view==="primary"));
     await loadEvents();
+  });
+}
+if(activityOrgSelect){
+  activityOrgSelect.addEventListener("change",async()=>{
+    const selected=new Set([...activityOrgSelect.selectedOptions].map(o=>o.value));
+    state.activityOrgs=new Set([state.primaryOrg,...selected]);
+    state.followed=new Set(state.activityOrgs);
+    saveSet("kova.pwa.activityOrgs",state.activityOrgs);
+    saveSet("kova.pwa.followed",state.followed);
+    await syncPushOrganizations();
+    if(state.view==="activity") await loadEvents();
   });
 }
