@@ -332,6 +332,33 @@ $("bridgeSyncBtn").onclick=async()=>{
     button.textContent="Prøv Bridge-synk igjen";
   }
 };
+$("publishChangelogBtn").onclick=async()=>{
+  const title=$("changelogTitle").value.trim();
+  const body=$("changelogBody").value.trim();
+  const sendPush=$("changelogPush").checked;
+  const message=$("changelogMessage");
+  if(!title||!body){message.textContent="Fyll inn tittel og endringer.";return}
+  const f=await initFirebase();
+  const id=new Date().toISOString().replace(/[:.]/g,"-");
+  $("publishChangelogBtn").disabled=true;
+  message.textContent="Publiserer…";
+  try{
+    const payload={id,title,body,publishedAt:f.serverTimestamp(),publishedBy:"superuser",sendPush};
+    await f.setDoc(f.doc(f.db,"changelog",id),payload);
+    await f.setDoc(f.doc(f.db,"publicConfig","changelog"),{latestId:id,title,body,updatedAt:f.serverTimestamp()});
+    if(sendPush){
+      await f.setDoc(f.doc(f.db,"adminCommands","announcement"),{
+        action:"announcement",status:"requested",requestId:id,title,
+        body:body.length>180?body.slice(0,177)+"…":body,
+        topic:"kova_all_users",requestedBy:"superuser",requestedAt:f.serverTimestamp(),
+        source:"changelog"
+      });
+      message.textContent="Endringsloggen er publisert og push er bestilt.";
+    }else message.textContent="Endringsloggen er publisert uten push.";
+    $("changelogTitle").value="";$("changelogBody").value="";
+  }catch(error){message.textContent="Publisering feilet: "+(error.message||String(error))}
+  finally{$("publishChangelogBtn").disabled=false}
+};
 $("orgSearch").addEventListener("input",renderOrgRows);
 $("signOutBtn").onclick=async()=>{
   const f=await initFirebase();await f.signOut(f.auth);show("loginView");
