@@ -4,6 +4,12 @@ import test from "node:test";
 
 const read = (name) => readFile(new URL(`../apps/web/${name}`, import.meta.url), "utf8");
 
+test("GitHub Pages-bygget publiserer både KlarX-root og KOVA", async () => {
+  const build = await readFile(new URL("../scripts/build.mjs", import.meta.url), "utf8");
+  assert.match(build, /cp\("apps\/web", "dist"/);
+  assert.match(build, /cp\("apps\/kova", "dist\/kova"/);
+});
+
 test("webappen har norsk språk, mobilvisning og tilgjengelig hovedinnhold", async () => {
   const html = await read("index.html");
   assert.match(html, /<html lang="nb"/);
