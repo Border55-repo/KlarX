@@ -544,11 +544,12 @@ function renderOrgOptions(filter=""){
       const bf=state.favoriteOrgs.has(b.code)?0:1;
       return af-bf || a.name.localeCompare(b.name,"nb");
     });
-  orgSelect.innerHTML=rows.map(org=>{
+  orgSelect.innerHTML='<option value="">Velg hjelpekorps</option>'+rows.map(org=>{
     const star=state.favoriteOrgs.has(org.code)?"★ ":"";
     return `<option value="${escapeHtml(org.code)}">${star}${escapeHtml(org.name)}</option>`;
   }).join("");
   if(rows.some(org=>org.code===current))orgSelect.value=current;
+  else orgSelect.value="";
 }
 function updateFavoriteOrgUi(){
   const favorite=state.favoriteOrgs.has(state.org);
