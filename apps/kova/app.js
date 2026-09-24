@@ -18,7 +18,8 @@ const state = {
   displayLimit: 20,
   primaryOrg: localStorage.getItem("kova.pwa.primaryOrg") || localStorage.getItem("kova.pwa.org") || "UllensakerRKH",
   activityOrgs: new Set(JSON.parse(localStorage.getItem("kova.pwa.activityOrgs") || localStorage.getItem("kova.pwa.followed") || '["UllensakerRKH"]')),
-  followed: new Set(JSON.parse(localStorage.getItem("kova.pwa.activityOrgs") || localStorage.getItem("kova.pwa.followed") || '["UllensakerRKH"]')),
+  followed: new Set(JSON.parse(localStorage.getItem("kova.pwa.followed") || '["UllensakerRKH"]')),
+  otherOrgs: new Set(JSON.parse(localStorage.getItem("kova.pwa.otherOrgs") || "[]")),
   favoriteOrgs: new Set(JSON.parse(localStorage.getItem("kova.pwa.favoriteOrgs") || '["UllensakerRKH"]')),
   notificationKinds: new Set(JSON.parse(localStorage.getItem("kova.pwa.notificationKinds") || '["added","changed","removed"]')),
   disabledNotificationTypes: new Set(JSON.parse(localStorage.getItem("kova.pwa.disabledNotificationTypes") || "[]")),
@@ -35,6 +36,7 @@ const $ = id => document.getElementById(id);
 const orgSelect = $("orgSelect");
 const primaryOrgSelect = $("primaryOrgSelect");
 const activityOrgSelect = $("activityOrgSelect");
+const otherOrgSelect = $("otherOrgSelect");
 const typeSelect = $("typeSelect");
 const eventsEl = $("events");
 const emptyEl = $("empty");
@@ -63,12 +65,17 @@ function setPrimaryOrg(code){
   saveSet("kova.pwa.followed",state.followed);
   syncPushOrganizations();
 }
-function setActivityOrg(code,enabled){
-  if(enabled || code===state.primaryOrg)state.activityOrgs.add(code);
-  else state.activityOrgs.delete(code);
-  state.followed=new Set(state.activityOrgs);
-  saveSet("kova.pwa.activityOrgs",state.activityOrgs);
+function rebuildFollowed(){
+  state.followed=new Set([state.primaryOrg,...state.activityOrgs,...state.otherOrgs].filter(Boolean));
   saveSet("kova.pwa.followed",state.followed);
+}
+function setActivityOrg(code,enabled){
+  if(!code || code===state.primaryOrg)return;
+  if(enabled){ state.activityOrgs.add(code); state.otherOrgs.delete(code); }
+  else state.activityOrgs.delete(code);
+  saveSet("kova.pwa.activityOrgs",state.activityOrgs);
+  saveSet("kova.pwa.otherOrgs",state.otherOrgs);
+  rebuildFollowed();
   syncPushOrganizations();
 }
 function saveFavoriteMeta(){localStorage.setItem("kova.pwa.favoriteMeta",JSON.stringify(state.favoriteMeta))}
@@ -199,6 +206,7 @@ function renderPrimaryOrgSelect(){
     primaryOrgSelect.appendChild(option);
   });
   renderActivityOrgSelect();
+  renderOtherOrgSelect();
 }
 function renderActivityOrgSelect(){
   if(!activityOrgSelect)return;
@@ -211,6 +219,19 @@ function renderActivityOrgSelect(){
       option.value=o.code; option.textContent=o.name;
       option.selected=state.activityOrgs.has(o.code);
       activityOrgSelect.appendChild(option);
+    });
+}
+function renderOtherOrgSelect(){
+  if(!otherOrgSelect)return;
+  otherOrgSelect.innerHTML="";
+  [...state.orgs]
+    .filter(o=>o.code!==state.primaryOrg && !state.activityOrgs.has(o.code))
+    .sort((a,b)=>a.name.localeCompare(b.name,"nb"))
+    .forEach(o=>{
+      const option=document.createElement("option");
+      option.value=o.code; option.textContent=o.name;
+      option.selected=state.otherOrgs.has(o.code);
+      otherOrgSelect.appendChild(option);
     });
 }
 function orgName(code){return state.orgs.find(o=>o.code===code)?.name || code}
@@ -1377,9 +1398,8 @@ if(activityOrgSelect){
   activityOrgSelect.addEventListener("change",async()=>{
     const selected=new Set([...activityOrgSelect.selectedOptions].map(o=>o.value));
     state.activityOrgs=new Set([state.primaryOrg,...selected]);
-    state.followed=new Set(state.activityOrgs);
     saveSet("kova.pwa.activityOrgs",state.activityOrgs);
-    saveSet("kova.pwa.followed",state.followed);
+    rebuildFollowed();
     await syncPushOrganizations();
     if(state.view==="activity") await loadEvents();
   });
