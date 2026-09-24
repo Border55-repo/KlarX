@@ -1,4 +1,8 @@
-# KlarX – førstehjelpstrener
+# KlarX – arkivert nettpublisering
+
+KlarX og Kova Companion er separate produkter. Dette repoet beholdes som kodearkiv.
+Publiseringen inneholder bare videresending til [Kova Companion](https://border55-repo.github.io/KOVA-Companion-Android/) og [eget adminpanel](https://border55-repo.github.io/KOVA-Companion-Android/admin/).
+URKH er et eget produkt og berøres ikke. Resten av teksten beskriver den tidligere KlarX-appen.
 
 En installerbar, mobilvennlig læringsapp for å øve på XABCDE-tiltakskortet og forberede seg til KFØR. Appen bruker korte læringskort, personlig veiledning på enheten, HLR-metronom, norsk taleopplesning, gruppeoppgaver og varierte scenariospill.
 
