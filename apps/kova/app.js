@@ -56,13 +56,14 @@ function displayTime(value=""){
 function saveSet(key,set){localStorage.setItem(key,JSON.stringify([...set]))}
 function setPrimaryOrg(code){
   state.primaryOrg=code;
-  state.activityOrgs.add(code);
-  state.followed=new Set(state.activityOrgs);
+  state.activityOrgs.delete(code);
+  state.otherOrgs.delete(code);
   state.org=code;
   localStorage.setItem("kova.pwa.primaryOrg",code);
   localStorage.setItem("kova.pwa.org",code);
   saveSet("kova.pwa.activityOrgs",state.activityOrgs);
-  saveSet("kova.pwa.followed",state.followed);
+  saveSet("kova.pwa.otherOrgs",state.otherOrgs);
+  rebuildFollowed();
   syncPushOrganizations();
 }
 function rebuildFollowed(){
@@ -933,10 +934,11 @@ async function loadOrganizations(){
   }
   if(!state.orgs.some(o=>o.code===state.primaryOrg))state.primaryOrg=state.orgs[0]?.code||"UllensakerRKH";
   if(!state.orgs.some(o=>o.code===state.org))state.org=state.primaryOrg;
-  state.activityOrgs.add(state.primaryOrg);
-  state.followed=new Set(state.activityOrgs);
+  state.activityOrgs.delete(state.primaryOrg);
+  state.otherOrgs.delete(state.primaryOrg);
   saveSet("kova.pwa.activityOrgs",state.activityOrgs);
-  saveSet("kova.pwa.followed",state.followed);
+  saveSet("kova.pwa.otherOrgs",state.otherOrgs);
+  rebuildFollowed();
   renderOrgOptions($("orgSearchInput")?.value||"");
   renderPrimaryOrgSelect();
   orgSelect.value=state.org;
@@ -1215,7 +1217,19 @@ orgSelect.addEventListener("change",async()=>{
   }
 });
 $("orgSearchInput").addEventListener("input",()=>{
-  renderOrgOptions($("orgSearchInput").value);
+  const q=$("orgSearchInput").value;
+  renderOrgOptions(q);
+  const needle=q.trim().toLowerCase();
+  const refill=(select,excluded)=>{
+    if(!select)return;
+    const current=select.value;
+    select.innerHTML='<option value="">Velg korps</option>';
+    state.orgs.filter(o=>!excluded.has(o.code) && (!needle || o.name.toLowerCase().includes(needle) || o.code.toLowerCase().includes(needle)))
+      .sort((a,b)=>a.name.localeCompare(b.name,"nb")).forEach(o=>{const op=document.createElement("option");op.value=o.code;op.textContent=o.name;select.appendChild(op)});
+    if([...select.options].some(o=>o.value===current))select.value=current;
+  };
+  refill(activityOrgSelect,new Set([state.primaryOrg,...state.activityOrgs,...state.otherOrgs]));
+  refill(otherOrgSelect,new Set([state.primaryOrg,...state.activityOrgs,...state.otherOrgs]));
 });
 $("favoriteOrgBtn").onclick=()=>{
   state.favoriteOrgs.has(state.org)?state.favoriteOrgs.delete(state.org):state.favoriteOrgs.add(state.org);
