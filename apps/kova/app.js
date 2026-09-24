@@ -1092,6 +1092,23 @@ async function openNotificationTarget(data={}){
     });
   }
 }
+
+async function loadChangelog(){
+  try{
+    const url="https://firestore.googleapis.com/v1/projects/kova-companion/databases/(default)/documents/publicConfig/changelog";
+    const response=await fetch(url,{cache:"no-store"});
+    if(!response.ok)throw new Error("Ingen publisert endringslogg");
+    const doc=await response.json(); const fields=doc.fields||{};
+    $("changelogTitle").textContent=fields.title?.stringValue||"KOVA Companion";
+    $("changelogBody").textContent=fields.body?.stringValue||"Ingen endringer publisert ennå.";
+    $("changelogDate").textContent=fields.updatedAt?.timestampValue?("Publisert "+formatUpdated(fields.updatedAt.timestampValue)):"";
+  }catch(error){
+    $("changelogTitle").textContent="Endringslogg";
+    $("changelogBody").textContent="Ingen publisert endringslogg tilgjengelig ennå.";
+    $("changelogDate").textContent="";
+  }
+}
+
 async function queuedRefresh(){
   if(!navigator.onLine){
     localStorage.setItem("kova.pwa.pendingRefresh","1");
@@ -1261,6 +1278,7 @@ if("serviceWorker" in navigator){
   updateConnection();
   try{
     await loadOrganizations();
+    await loadChangelog();
     updateNotificationSettingsUi();
     const reloading=await checkRemoteCacheEpoch();
     if(reloading)return;
