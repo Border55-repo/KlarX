@@ -7,7 +7,7 @@ const state = {
   orgs: [],
   org: localStorage.getItem("kova.pwa.org") || "UllensakerRKH",
   events: [],
-  view: "primary",
+  view: "all",
   search: "",
   type: "",
   favorites: new Set(JSON.parse(localStorage.getItem("kova.pwa.favorites") || "[]")),
@@ -18,8 +18,7 @@ const state = {
   displayLimit: 20,
   primaryOrg: localStorage.getItem("kova.pwa.primaryOrg") || localStorage.getItem("kova.pwa.org") || "UllensakerRKH",
   activityOrgs: new Set(JSON.parse(localStorage.getItem("kova.pwa.activityOrgs") || localStorage.getItem("kova.pwa.followed") || '["UllensakerRKH"]')),
-  followed: new Set(JSON.parse(localStorage.getItem("kova.pwa.followed") || '["UllensakerRKH"]')),
-  otherOrgs: new Set(JSON.parse(localStorage.getItem("kova.pwa.otherOrgs") || "[]")),
+  followed: new Set(JSON.parse(localStorage.getItem("kova.pwa.activityOrgs") || localStorage.getItem("kova.pwa.followed") || '["UllensakerRKH"]')),
   favoriteOrgs: new Set(JSON.parse(localStorage.getItem("kova.pwa.favoriteOrgs") || '["UllensakerRKH"]')),
   notificationKinds: new Set(JSON.parse(localStorage.getItem("kova.pwa.notificationKinds") || '["added","changed","removed"]')),
   disabledNotificationTypes: new Set(JSON.parse(localStorage.getItem("kova.pwa.disabledNotificationTypes") || "[]")),
@@ -34,9 +33,6 @@ const state = {
 
 const $ = id => document.getElementById(id);
 const orgSelect = $("orgSelect");
-const primaryOrgSelect = $("primaryOrgSelect");
-const activityOrgSelect = $("activityOrgSelect");
-const otherOrgSelect = $("otherOrgSelect");
 const typeSelect = $("typeSelect");
 const eventsEl = $("events");
 const emptyEl = $("empty");
@@ -56,27 +52,21 @@ function displayTime(value=""){
 function saveSet(key,set){localStorage.setItem(key,JSON.stringify([...set]))}
 function setPrimaryOrg(code){
   state.primaryOrg=code;
-  state.activityOrgs.delete(code);
-  state.otherOrgs.delete(code);
+  state.activityOrgs.add(code);
+  state.followed=new Set(state.activityOrgs);
   state.org=code;
   localStorage.setItem("kova.pwa.primaryOrg",code);
   localStorage.setItem("kova.pwa.org",code);
   saveSet("kova.pwa.activityOrgs",state.activityOrgs);
-  saveSet("kova.pwa.otherOrgs",state.otherOrgs);
-  rebuildFollowed();
+  saveSet("kova.pwa.followed",state.followed);
   syncPushOrganizations();
 }
-function rebuildFollowed(){
-  state.followed=new Set([state.primaryOrg,...state.activityOrgs,...state.otherOrgs].filter(Boolean));
-  saveSet("kova.pwa.followed",state.followed);
-}
 function setActivityOrg(code,enabled){
-  if(!code || code===state.primaryOrg)return;
-  if(enabled){ state.activityOrgs.add(code); state.otherOrgs.delete(code); }
+  if(enabled || code===state.primaryOrg)state.activityOrgs.add(code);
   else state.activityOrgs.delete(code);
+  state.followed=new Set(state.activityOrgs);
   saveSet("kova.pwa.activityOrgs",state.activityOrgs);
-  saveSet("kova.pwa.otherOrgs",state.otherOrgs);
-  rebuildFollowed();
+  saveSet("kova.pwa.followed",state.followed);
   syncPushOrganizations();
 }
 function saveFavoriteMeta(){localStorage.setItem("kova.pwa.favoriteMeta",JSON.stringify(state.favoriteMeta))}
@@ -195,53 +185,6 @@ function dateInRange(dateIso,days){
   const today=new Date(); today.setHours(0,0,0,0);
   const end=new Date(today); end.setDate(end.getDate()+days);
   return date>=today && date<=end;
-}
-function renderPrimaryOrgSelect(){
-  if(!primaryOrgSelect)return;
-  const rows=[...state.orgs].sort((a,b)=>a.name.localeCompare(b.name,"nb"));
-  primaryOrgSelect.innerHTML="";
-  rows.forEach(o=>{
-    const option=document.createElement("option");
-    option.value=o.code; option.textContent=o.name;
-    option.selected=o.code===state.primaryOrg;
-    primaryOrgSelect.appendChild(option);
-  });
-  renderActivityOrgSelect();
-  renderOtherOrgSelect();
-}
-function renderActivityOrgSelect(){
-  if(!activityOrgSelect)return;
-  activityOrgSelect.innerHTML='<option value="">Velg korps</option>';
-  [...state.orgs].filter(o=>o.code!==state.primaryOrg && !state.activityOrgs.has(o.code) && !state.otherOrgs.has(o.code))
-    .sort((a,b)=>a.name.localeCompare(b.name,"nb")).forEach(o=>{
-      const option=document.createElement("option"); option.value=o.code; option.textContent=o.name; activityOrgSelect.appendChild(option);
-    });
-  renderOrgMembershipLists();
-}
-function renderOtherOrgSelect(){
-  if(!otherOrgSelect)return;
-  otherOrgSelect.innerHTML='<option value="">Velg korps</option>';
-  [...state.orgs].filter(o=>o.code!==state.primaryOrg && !state.activityOrgs.has(o.code) && !state.otherOrgs.has(o.code))
-    .sort((a,b)=>a.name.localeCompare(b.name,"nb")).forEach(o=>{
-      const option=document.createElement("option"); option.value=o.code; option.textContent=o.name; otherOrgSelect.appendChild(option);
-    });
-  renderOrgMembershipLists();
-}
-function renderOrgMembershipLists(){
-  const draw=(id,codes,kind)=>{
-    const el=$(id); if(!el)return; el.innerHTML="";
-    if(!codes.size){el.innerHTML='<span class="muted">Ingen valgt</span>';return;}
-    [...codes].sort((a,b)=>orgName(a).localeCompare(orgName(b),"nb")).forEach(code=>{
-      const row=document.createElement("div"); row.className="selected-org-row";
-      const name=document.createElement("span"); name.textContent=orgName(code);
-      const remove=document.createElement("button"); remove.className="small"; remove.textContent="Fjern";
-      remove.onclick=async()=>{ if(kind==="activity")state.activityOrgs.delete(code);else state.otherOrgs.delete(code);
-        saveSet("kova.pwa.activityOrgs",state.activityOrgs); saveSet("kova.pwa.otherOrgs",state.otherOrgs); rebuildFollowed();
-        renderActivityOrgSelect(); renderOtherOrgSelect(); await syncPushOrganizations(); if(["activity","followed"].includes(state.view))await loadEvents(); };
-      row.append(name,remove); el.appendChild(row);
-    });
-  };
-  draw("activityOrgList",state.activityOrgs,"activity"); draw("otherOrgList",state.otherOrgs,"other");
 }
 function orgName(code){return state.orgs.find(o=>o.code===code)?.name || code}
 function updateConnection(){
@@ -584,12 +527,11 @@ function renderOrgOptions(filter=""){
       const bf=state.favoriteOrgs.has(b.code)?0:1;
       return af-bf || a.name.localeCompare(b.name,"nb");
     });
-  orgSelect.innerHTML='<option value="">Velg hjelpekorps</option>'+rows.map(org=>{
+  orgSelect.innerHTML=rows.map(org=>{
     const star=state.favoriteOrgs.has(org.code)?"★ ":"";
     return `<option value="${escapeHtml(org.code)}">${star}${escapeHtml(org.name)}</option>`;
   }).join("");
   if(rows.some(org=>org.code===current))orgSelect.value=current;
-  else orgSelect.value="";
 }
 function updateFavoriteOrgUi(){
   const favorite=state.favoriteOrgs.has(state.org);
@@ -752,12 +694,11 @@ function renderEverydayDashboard(){
 function filteredEvents(){
   const q=state.search.trim().toLowerCase();
   return state.events.filter(event=>{
-    // KOVA Companion is an operational upcoming-shifts view: never show expired activities.
-    if(!event.dateIso || !dateInRange(event.dateIso,3650))return false;
     if(state.view==="favorites" && !state.favorites.has(eventKey(event)))return false;
     if(state.view==="week" && !dateInRange(event.dateIso,7))return false;
     if(state.view==="month" && !dateInRange(event.dateIso,30))return false;
-     if(state.type && event.type!==state.type)return false;
+    if(state.view==="all" && event.dateIso && !dateInRange(event.dateIso,3650))return false;
+    if(state.type && event.type!==state.type)return false;
     return !q || [event.description,event.type,event.dateLabel,event.time,event.orgName]
       .some(v=>(v||"").toLowerCase().includes(q));
   }).sort((a,b)=>(a.dateIso+a.time).localeCompare(b.dateIso+b.time));
@@ -771,7 +712,7 @@ function render(){
   $("loadMoreBtn").classList.toggle("hidden",state.view!=="favorites"||list.length>=all.length);
   $("loadMoreBtn").textContent=list.length<all.length ? `Vis flere (${all.length-list.length} igjen)` : "Vis flere";
   renderEverydayDashboard();
-  const multi=["followed","favorites","activity"].includes(state.view);
+  const multi=state.view==="followed"||state.view==="favorites";
   let lastGroup="";
 
   for(const event of list){
@@ -933,15 +874,8 @@ async function loadOrganizations(){
     state.bridgeApiVersion=indexResult.value.apiVersion||"1.x";
     state.bridgeCapabilities=indexResult.value.capabilities||{};
   }
-  if(!state.orgs.some(o=>o.code===state.primaryOrg))state.primaryOrg=state.orgs[0]?.code||"UllensakerRKH";
-  if(!state.orgs.some(o=>o.code===state.org))state.org=state.primaryOrg;
-  state.activityOrgs.delete(state.primaryOrg);
-  state.otherOrgs.delete(state.primaryOrg);
-  saveSet("kova.pwa.activityOrgs",state.activityOrgs);
-  saveSet("kova.pwa.otherOrgs",state.otherOrgs);
-  rebuildFollowed();
+  if(!state.orgs.some(o=>o.code===state.org))state.org="UllensakerRKH";
   renderOrgOptions($("orgSearchInput")?.value||"");
-  renderPrimaryOrgSelect();
   orgSelect.value=state.org;
   updateFollowUi();
 }
@@ -993,22 +927,6 @@ async function loadMany(codes,title,emptyText){
 async function loadFollowed(){
   await loadMany([...state.followed],"Fulgte korps","Ingen korps er fulgt ennå");
 }
-async function loadPrimary(){
-  await loadMany([state.primaryOrg],"Hoved Korps – "+orgName(state.primaryOrg),"Kunne ikke hente vakter for Hoved Korps");
-}
-async function loadActivity(){
-  const codes=[...state.activityOrgs].filter(code=>code!==state.primaryOrg);
-  await loadMany(codes,"Korps med Aktivitetstilknytning","Ingen ekstra aktivitetstilknytninger er valgt");
-}
-async function loadSelected(){
-  if(!state.org){
-    state.events=[];
-    $("orgTitle").textContent="Valgt korps";
-    statusText.textContent="Velg et hjelpekorps for å se vakter";
-    return;
-  }
-  await loadCurrent();
-}
 async function loadFavorites(){
   const codes=[...new Set([...state.favorites].map(key=>key.split("|")[0]).filter(Boolean))];
   await loadMany(codes,"Mine vakter","Ingen favorittvakter er lagret ennå");
@@ -1027,10 +945,7 @@ async function loadEvents(){
   statusText.textContent="Oppdaterer…";
   updateConnection();
   try{
-    if(state.view==="primary")await loadPrimary();
-    else if(state.view==="activity")await loadActivity();
-    else if(state.view==="selected")await loadSelected();
-    else if(state.view==="followed")await loadFollowed();
+    if(state.view==="followed")await loadFollowed();
     else if(state.view==="favorites")await loadFavorites();
     else await loadCurrent();
     updateTypes();
@@ -1209,28 +1124,16 @@ async function queuedRefresh(){
 
 orgSelect.addEventListener("change",async()=>{
   state.org=orgSelect.value;
-  if(state.org)localStorage.setItem("kova.pwa.org",state.org);
+  localStorage.setItem("kova.pwa.org",state.org);
   updateFollowUi();
-  if(state.org){
-    state.view="selected";
-    document.querySelectorAll("#viewTabs button").forEach(b=>b.classList.toggle("active",b.dataset.view==="selected"));
-    await loadEvents();
+  if(state.view==="followed"){
+    state.view="all";
+    document.querySelectorAll("#viewTabs button").forEach(b=>b.classList.toggle("active",b.dataset.view==="all"));
   }
+  await loadEvents();
 });
 $("orgSearchInput").addEventListener("input",()=>{
-  const q=$("orgSearchInput").value;
-  renderOrgOptions(q);
-  const needle=q.trim().toLowerCase();
-  const refill=(select,excluded)=>{
-    if(!select)return;
-    const current=select.value;
-    select.innerHTML='<option value="">Velg korps</option>';
-    state.orgs.filter(o=>!excluded.has(o.code) && (!needle || o.name.toLowerCase().includes(needle) || o.code.toLowerCase().includes(needle)))
-      .sort((a,b)=>a.name.localeCompare(b.name,"nb")).forEach(o=>{const op=document.createElement("option");op.value=o.code;op.textContent=o.name;select.appendChild(op)});
-    if([...select.options].some(o=>o.value===current))select.value=current;
-  };
-  refill(activityOrgSelect,new Set([state.primaryOrg,...state.activityOrgs,...state.otherOrgs]));
-  refill(otherOrgSelect,new Set([state.primaryOrg,...state.activityOrgs,...state.otherOrgs]));
+  renderOrgOptions($("orgSearchInput").value);
 });
 $("favoriteOrgBtn").onclick=()=>{
   state.favoriteOrgs.has(state.org)?state.favoriteOrgs.delete(state.org):state.favoriteOrgs.add(state.org);
@@ -1262,9 +1165,8 @@ typeSelect.addEventListener("change",()=>{state.type=typeSelect.value;state.disp
 searchInput.addEventListener("input",()=>{state.search=searchInput.value;state.displayLimit=20;render()});
 $("refreshBtn").onclick=queuedRefresh;
 $("followBtn").onclick=async()=>{
-  const willFollow=!state.activityOrgs.has(state.org);
-  setActivityOrg(state.org,willFollow);
-  renderPrimaryOrgSelect();
+  state.followed.has(state.org)?state.followed.delete(state.org):state.followed.add(state.org);
+  saveSet("kova.pwa.followed",state.followed);
   updateFollowUi();
   await syncPushOrganizations();
   await refreshNotificationUi();
@@ -1395,40 +1297,6 @@ if("serviceWorker" in navigator){
       });
     }
   }catch(error){
-    updateConnection();
-    statusText.textContent=navigator.onLine
-      ? "KOVA-data kunne ikke hentes akkurat nå – prøver igjen automatisk"
-      : "Frakoblet – viser lagrede data når de finnes";
-    console.warn("KOVA startup error",error);
+    statusText.textContent=error.message||"Oppstart feilet";
   }
 })();
-
-if(primaryOrgSelect){
-  primaryOrgSelect.addEventListener("change", async event=>{
-    const previous=state.primaryOrg;
-    setPrimaryOrg(event.target.value);
-    if(previous!==state.primaryOrg && previous) state.activityOrgs.delete(previous);
-    state.activityOrgs.add(state.primaryOrg);
-    saveSet("kova.pwa.activityOrgs",state.activityOrgs);
-    saveSet("kova.pwa.followed",state.activityOrgs);
-    renderPrimaryOrgSelect();
-    state.view="primary";
-    document.querySelectorAll("#viewTabs button").forEach(b=>b.classList.toggle("active",b.dataset.view==="primary"));
-    await loadEvents();
-  });
-}
-if(activityOrgSelect){
-  activityOrgSelect.addEventListener("change",async()=>{
-    const code=activityOrgSelect.value; if(!code)return;
-    state.activityOrgs.add(code); state.otherOrgs.delete(code);
-    saveSet("kova.pwa.activityOrgs",state.activityOrgs); saveSet("kova.pwa.otherOrgs",state.otherOrgs); rebuildFollowed();
-    renderActivityOrgSelect(); renderOtherOrgSelect(); await syncPushOrganizations(); if(state.view==="activity")await loadEvents();
-  });
-}if(otherOrgSelect){
-  otherOrgSelect.addEventListener("change",async()=>{
-    const code=otherOrgSelect.value; if(!code)return;
-    state.otherOrgs.add(code); state.activityOrgs.delete(code);
-    saveSet("kova.pwa.otherOrgs",state.otherOrgs); saveSet("kova.pwa.activityOrgs",state.activityOrgs); rebuildFollowed();
-    renderActivityOrgSelect(); renderOtherOrgSelect(); await syncPushOrganizations();
-  });
-};
