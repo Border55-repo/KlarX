@@ -1,3 +1,8 @@
+## Teknisk retting – 2026-09-24
+
+- GitHub Pages-bygget publiserer igjen KlarX på rotadressen og beholder KOVA under `/kova/`.
+- La til en regresjonstest som hindrer at en av de to appene utelates fra fremtidige bygg.
+
 ## KOVA PWA 2.1.1 – 2026-09-24
 
 - Vaktvarsler og push-påminnelser gjelder bare favorittkorps. Følg og valgt korps gir ikke abonnement.
