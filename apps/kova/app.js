@@ -189,8 +189,14 @@ function dateInRange(dateIso,days){
 }
 function renderPrimaryOrgSelect(){
   if(!primaryOrgSelect)return;
+  state.activityOrgs.add(state.primaryOrg);
+  state.followed=new Set(state.activityOrgs);
+  const rows=[...state.activityOrgs]
+    .map(code=>state.orgs.find(org=>org.code===code))
+    .filter(Boolean)
+    .sort((a,b)=>a.name.localeCompare(b.name,"nb"));
   primaryOrgSelect.innerHTML="";
-  state.orgs.filter(o=>o.category==="hjelpekorps").forEach(o=>{
+  rows.forEach(o=>{
     const option=document.createElement("option");
     option.value=o.code; option.textContent=o.name;
     option.selected=o.code===state.primaryOrg;
@@ -886,7 +892,12 @@ async function loadOrganizations(){
     state.bridgeCapabilities=indexResult.value.capabilities||{};
   }
   if(!state.orgs.some(o=>o.code===state.org))state.org="UllensakerRKH";
+  state.activityOrgs.add(state.primaryOrg);
+  state.followed=new Set(state.activityOrgs);
+  saveSet("kova.pwa.activityOrgs",state.activityOrgs);
+  saveSet("kova.pwa.followed",state.followed);
   renderOrgOptions($("orgSearchInput")?.value||"");
+  renderPrimaryOrgSelect();
   orgSelect.value=state.org;
   updateFollowUi();
 }
@@ -1176,8 +1187,9 @@ typeSelect.addEventListener("change",()=>{state.type=typeSelect.value;state.disp
 searchInput.addEventListener("input",()=>{state.search=searchInput.value;state.displayLimit=20;render()});
 $("refreshBtn").onclick=queuedRefresh;
 $("followBtn").onclick=async()=>{
-  state.followed.has(state.org)?state.followed.delete(state.org):state.followed.add(state.org);
-  saveSet("kova.pwa.followed",state.followed);
+  const willFollow=!state.activityOrgs.has(state.org);
+  setActivityOrg(state.org,willFollow);
+  renderPrimaryOrgSelect();
   updateFollowUi();
   await syncPushOrganizations();
   await refreshNotificationUi();
