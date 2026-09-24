@@ -68,11 +68,12 @@ function ageMinutes(value){
 function healthState(runtime){
   if(!runtime?.lastRunAt)return {level:"unknown",label:"Ukjent",hint:"Venter på første live Bridge-status."};
   const age=ageMinutes(runtime.lastRunAt);
-  if(runtime.status==="error"||age>30)return {level:"error",label:"Feil",hint:`Siste Bridge-kjøring: ${fmt(runtime.lastRunAt)}`};
-  if(runtime.status==="degraded"||age>12||Number(runtime.pendingPushes||0)>0){
+  const failures=Number(runtime.consecutiveFailureRuns||0);
+  if(runtime.status==="error"||failures>0||age>90)return {level:"error",label:"Feil",hint:`Siste Bridge-kjøring: ${fmt(runtime.lastRunAt)}`};
+  if(runtime.status==="degraded"||Number(runtime.pendingPushes||0)>0||age>45){
     return {level:"warning",label:"Advarsel",hint:`Siste Bridge-kjøring: ${fmt(runtime.lastRunAt)}`};
   }
-  return {level:"ok",label:"Grønn",hint:`Bridge kjørte ${fmt(runtime.lastRunAt)}`};
+  return {level:"ok",label:"OK",hint:`Siste vellykkede Bridge-kjøring: ${fmt(runtime.lastRunAt)}`};
 }
 function renderSystemHealth(runtime){
   const state=healthState(runtime);
