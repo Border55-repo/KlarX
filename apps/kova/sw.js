@@ -1,4 +1,4 @@
-const CACHE="kova-pwa-v28";
+const CACHE="kova-pwa-v29";
 const SHELL=["./","./index.html","./styles.css","./app.js","./manifest.webmanifest","./icon.svg","./firebase-web-config.json","./privacy.html"];
 const HISTORY_DB="kova-pwa-history";
 const HISTORY_STORE="notifications";
@@ -143,7 +143,7 @@ self.addEventListener("notificationclick",event=>{
   const params=new URLSearchParams();
   if(data.organization)params.set("org",data.organization);
   if(data.eventId)params.set("event",data.eventId);
-  const target="./"+(params.toString()?"?"+params.toString():"");
+  const target=data.url||("./"+(params.toString()?"?"+params.toString():""));
   event.waitUntil(self.clients.matchAll({type:"window",includeUncontrolled:true}).then(list=>{
     const existing=list.find(client=>"focus" in client);
     if(existing){
@@ -195,6 +195,7 @@ self.addEventListener("push",event=>{
       tag:key,
       renotify:false,
       data:{
+        url:payload.url||"",
         organization:historyItem.organization,
         eventId:historyItem.eventId,
         kind:historyItem.kind,
