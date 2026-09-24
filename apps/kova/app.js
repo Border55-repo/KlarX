@@ -847,9 +847,10 @@ async function loadOrganizations(){
   if(orgResult.status!=="fulfilled")throw orgResult.reason;
   state.orgs=orgResult.value.organizations.filter(o=>o.category==="hjelpekorps");
   if(indexResult.status==="fulfilled"){
-    state.orgIndex=new Map(
-      (indexResult.value.organizations||[]).map(row=>[row.code,row])
-    );
+    const indexRows=indexResult.value.organizations||[];
+    state.orgIndex=new Map(indexRows.map(row=>[row.code,row]));
+    const activeCodes=new Set(indexRows.filter(row=>Number(row.eventCount)>0).map(row=>row.code));
+    state.orgs=state.orgs.filter(o=>activeCodes.has(o.code) || state.followed.has(o.code) || state.favoriteOrgs.has(o.code) || o.code===state.org);
     state.bridgeApiVersion=indexResult.value.apiVersion||"1.x";
     state.bridgeCapabilities=indexResult.value.capabilities||{};
   }
