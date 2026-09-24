@@ -1418,7 +1418,6 @@ if(activityOrgSelect){
   });
 };
 
-const $ = id => document.getElementById(id);
 const orgSelect = $("orgSelect");
 const primaryOrgSelect = $("primaryOrgSelect");
 const activityOrgSelect = $("activityOrgSelect");
