@@ -236,7 +236,7 @@ test("KOVA PWA offline recovery queues refresh and navigation has cache fallback
   assert.ok(app.includes("kova.pwa.pendingRefresh"));
   assert.ok(app.includes("queuedRefresh"));
   assert.ok(sw.includes('event.request.mode==="navigate"'));
-  assert.ok(sw.includes('caches.match("./index.html")'));
+  assert.ok(sw.includes('caches.match(navigationKey)'));
 });
 
 test("KOVA PWA accessibility includes skip navigation focus and reduced motion", async () => {
@@ -252,7 +252,7 @@ test("KOVA PWA accessibility includes skip navigation focus and reduced motion",
 test("KOVA PWA consumes Bridge 2.0 capability contract", async () => {
   const html = await readFile("apps/kova/index.html", "utf8");
   const app = await readFile("apps/kova/app.js", "utf8");
-  assert.ok(html.includes("Web / iPhone PWA 2.0"));
+  assert.ok(html.includes("Web / iPhone PWA 2.1.1"));
   assert.ok(app.includes("bridgeApiVersion"));
   assert.ok(app.includes("bridgeCapabilities"));
   assert.ok(app.includes("indexResult.value.apiVersion"));

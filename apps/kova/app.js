@@ -17,7 +17,7 @@ const state = {
   favoriteEvents: [],
   displayLimit: 20,
   followed: new Set(JSON.parse(localStorage.getItem("kova.pwa.followed") || '["UllensakerRKH"]')),
-  favoriteOrgs: new Set(JSON.parse(localStorage.getItem("kova.pwa.favoriteOrgs") || '["UllensakerRKH"]')),
+  favoriteOrgs: new Set(JSON.parse(localStorage.getItem("kova.pwa.favoriteOrgs") || "[]")),
   notificationKinds: new Set(JSON.parse(localStorage.getItem("kova.pwa.notificationKinds") || '["added","changed","removed","announcement"]')),
   disabledNotificationTypes: new Set(JSON.parse(localStorage.getItem("kova.pwa.disabledNotificationTypes") || "[]")),
   quietEnabled: localStorage.getItem("kova.pwa.quietEnabled")==="1",
@@ -236,8 +236,7 @@ async function savePushSubscription(subscription,enabled=true){
   if(!endpoint||!keys.p256dh||!keys.auth)throw new Error("Ufullstendig Web Push-abonnement");
 
   const id=await endpointId(endpoint);
-  const organizations=[...state.followed];
-  if(!organizations.includes(state.org))organizations.push(state.org);
+  const organizations=[...state.favoriteOrgs];
 
   try{
     const firebase=await firestoreClient();
@@ -279,6 +278,7 @@ async function reminderDocumentId(subscriptionId,event){
 async function syncReminderBackend(event,leadMinutes,enabled=true){
   const subscription=await currentPushSubscription();
   if(!subscription || Notification.permission!=="granted")return false;
+  if(enabled && !state.favoriteOrgs.has(event.orgCode||state.org))return false;
   const json=subscription.toJSON();
   const endpoint=json.endpoint||subscription.endpoint;
   if(!endpoint)return false;
@@ -437,7 +437,7 @@ async function refreshNotificationUi(){
       ? "Varsler er på lokalt – registrering mangler"
       : (Notification.permission==="denied" ? "Varsler er blokkert" : "Varsler er av");
   hint.textContent=backendRegistered
-    ? `Følger ${state.followed.size} korps • registrert ${new Intl.DateTimeFormat("nb-NO",{dateStyle:"short",timeStyle:"short"}).format(new Date(registeredAt))}`
+    ? `Varsler fra ${state.favoriteOrgs.size} favorittkorps • registrert ${new Intl.DateTimeFormat("nb-NO",{dateStyle:"short",timeStyle:"short"}).format(new Date(registeredAt))}`
     : enabled
       ? "Trykk Registrer på nytt for å koble enheten til KOVA Bridge."
       : "Ny, endret og fjernet aktivitet";
@@ -826,6 +826,8 @@ function updateReminderUi(message=""){
     $("reminderHint").textContent="Legg vakten til Mine vakter først.";
   }else if(!hasTime){
     $("reminderHint").textContent="KOVA må ha klokkeslett før push-påminnelse kan planlegges.";
+  }else if(!state.favoriteOrgs.has(state.selected.orgCode||state.org)){
+    $("reminderHint").textContent="Marker korpset som favoritt for å få pushvarsler. Kalenderpåminnelsen lagres uansett.";
   }else if(pushSupported()&&Notification.permission==="granted"&&localStorage.getItem("kova.pwa.pushRegisteredAt")){
     $("reminderHint").textContent="Push-påminnelse er koblet til Bridge og tas også med i kalenderfilen.";
   }else{
@@ -1132,12 +1134,14 @@ orgSelect.addEventListener("change",async()=>{
 $("orgSearchInput").addEventListener("input",()=>{
   renderOrgOptions($("orgSearchInput").value);
 });
-$("favoriteOrgBtn").onclick=()=>{
+$("favoriteOrgBtn").onclick=async()=>{
   state.favoriteOrgs.has(state.org)?state.favoriteOrgs.delete(state.org):state.favoriteOrgs.add(state.org);
   saveSet("kova.pwa.favoriteOrgs",state.favoriteOrgs);
   renderOrgOptions($("orgSearchInput").value);
   orgSelect.value=state.org;
   updateFavoriteOrgUi();
+  await syncPushOrganizations();
+  await refreshNotificationUi();
 };
 for(const id of ["notifyAdded","notifyChanged","notifyRemoved","quietEnabled","quietStart","quietEnd"]){
   $(id).addEventListener("change",()=>syncNotificationPreferenceControls().catch(console.warn));
