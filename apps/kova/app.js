@@ -7,7 +7,7 @@ const state = {
   orgs: [],
   org: localStorage.getItem("kova.pwa.org") || "UllensakerRKH",
   events: [],
-  view: "all",
+  view: "primary",
   search: "",
   type: "",
   favorites: new Set(JSON.parse(localStorage.getItem("kova.pwa.favorites") || "[]")),
@@ -730,7 +730,7 @@ function render(){
   $("loadMoreBtn").classList.toggle("hidden",state.view!=="favorites"||list.length>=all.length);
   $("loadMoreBtn").textContent=list.length<all.length ? `Vis flere (${all.length-list.length} igjen)` : "Vis flere";
   renderEverydayDashboard();
-  const multi=state.view==="followed"||state.view==="favorites";
+  const multi=["followed","favorites","activity"].includes(state.view);
   let lastGroup="";
 
   for(const event of list){
@@ -892,7 +892,8 @@ async function loadOrganizations(){
     state.bridgeApiVersion=indexResult.value.apiVersion||"1.x";
     state.bridgeCapabilities=indexResult.value.capabilities||{};
   }
-  if(!state.orgs.some(o=>o.code===state.org))state.org="UllensakerRKH";
+  if(!state.orgs.some(o=>o.code===state.primaryOrg))state.primaryOrg=state.orgs[0]?.code||"UllensakerRKH";
+  if(!state.orgs.some(o=>o.code===state.org))state.org=state.primaryOrg;
   state.activityOrgs.add(state.primaryOrg);
   state.followed=new Set(state.activityOrgs);
   saveSet("kova.pwa.activityOrgs",state.activityOrgs);
@@ -950,6 +951,22 @@ async function loadMany(codes,title,emptyText){
 async function loadFollowed(){
   await loadMany([...state.followed],"Fulgte korps","Ingen korps er fulgt ennå");
 }
+async function loadPrimary(){
+  await loadMany([state.primaryOrg],"Hoved Korps – "+orgName(state.primaryOrg),"Kunne ikke hente vakter for Hoved Korps");
+}
+async function loadActivity(){
+  const codes=[...state.activityOrgs].filter(code=>code!==state.primaryOrg);
+  await loadMany(codes,"Korps med Aktivitetstilknytning","Ingen ekstra aktivitetstilknytninger er valgt");
+}
+async function loadSelected(){
+  if(!state.org){
+    state.events=[];
+    $("orgTitle").textContent="Valgt korps";
+    statusText.textContent="Velg et hjelpekorps for å se vakter";
+    return;
+  }
+  await loadCurrent();
+}
 async function loadFavorites(){
   const codes=[...new Set([...state.favorites].map(key=>key.split("|")[0]).filter(Boolean))];
   await loadMany(codes,"Mine vakter","Ingen favorittvakter er lagret ennå");
@@ -968,7 +985,10 @@ async function loadEvents(){
   statusText.textContent="Oppdaterer…";
   updateConnection();
   try{
-    if(state.view==="followed")await loadFollowed();
+    if(state.view==="primary")await loadPrimary();
+    else if(state.view==="activity")await loadActivity();
+    else if(state.view==="selected")await loadSelected();
+    else if(state.view==="followed")await loadFollowed();
     else if(state.view==="favorites")await loadFavorites();
     else await loadCurrent();
     updateTypes();
@@ -1147,13 +1167,13 @@ async function queuedRefresh(){
 
 orgSelect.addEventListener("change",async()=>{
   state.org=orgSelect.value;
-  localStorage.setItem("kova.pwa.org",state.org);
+  if(state.org)localStorage.setItem("kova.pwa.org",state.org);
   updateFollowUi();
-  if(state.view==="followed"){
-    state.view="all";
-    document.querySelectorAll("#viewTabs button").forEach(b=>b.classList.toggle("active",b.dataset.view==="all"));
+  if(state.org){
+    state.view="selected";
+    document.querySelectorAll("#viewTabs button").forEach(b=>b.classList.toggle("active",b.dataset.view==="selected"));
+    await loadEvents();
   }
-  await loadEvents();
 });
 $("orgSearchInput").addEventListener("input",()=>{
   renderOrgOptions($("orgSearchInput").value);
@@ -1321,7 +1341,11 @@ if("serviceWorker" in navigator){
       });
     }
   }catch(error){
-    statusText.textContent=error.message||"Oppstart feilet";
+    updateConnection();
+    statusText.textContent=navigator.onLine
+      ? "KOVA-data kunne ikke hentes akkurat nå – prøver igjen automatisk"
+      : "Frakoblet – viser lagrede data når de finnes";
+    console.warn("KOVA startup error",error);
   }
 })();
 
@@ -1329,6 +1353,8 @@ if(primaryOrgSelect){
   primaryOrgSelect.addEventListener("change", async event=>{
     setPrimaryOrg(event.target.value);
     if(orgSelect){ orgSelect.value=event.target.value; }
-    if(typeof loadOrg==="function") await loadOrg(event.target.value);
+    state.view="primary";
+    document.querySelectorAll("#viewTabs button").forEach(b=>b.classList.toggle("active",b.dataset.view==="primary"));
+    await loadEvents();
   });
 }
