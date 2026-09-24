@@ -16,7 +16,9 @@ const state = {
   reminders: JSON.parse(localStorage.getItem("kova.pwa.reminders") || "{}"),
   favoriteEvents: [],
   displayLimit: 20,
-  followed: new Set(JSON.parse(localStorage.getItem("kova.pwa.followed") || '["UllensakerRKH"]')),
+  primaryOrg: localStorage.getItem("kova.pwa.primaryOrg") || localStorage.getItem("kova.pwa.org") || "UllensakerRKH",
+  activityOrgs: new Set(JSON.parse(localStorage.getItem("kova.pwa.activityOrgs") || localStorage.getItem("kova.pwa.followed") || '["UllensakerRKH"]')),
+  followed: new Set(JSON.parse(localStorage.getItem("kova.pwa.activityOrgs") || localStorage.getItem("kova.pwa.followed") || '["UllensakerRKH"]')),
   favoriteOrgs: new Set(JSON.parse(localStorage.getItem("kova.pwa.favoriteOrgs") || '["UllensakerRKH"]')),
   notificationKinds: new Set(JSON.parse(localStorage.getItem("kova.pwa.notificationKinds") || '["added","changed","removed"]')),
   disabledNotificationTypes: new Set(JSON.parse(localStorage.getItem("kova.pwa.disabledNotificationTypes") || "[]")),
@@ -48,6 +50,25 @@ function displayTime(value=""){
   return t;
 }
 function saveSet(key,set){localStorage.setItem(key,JSON.stringify([...set]))}
+function setPrimaryOrg(code){
+  state.primaryOrg=code;
+  state.activityOrgs.add(code);
+  state.followed=new Set(state.activityOrgs);
+  state.org=code;
+  localStorage.setItem("kova.pwa.primaryOrg",code);
+  localStorage.setItem("kova.pwa.org",code);
+  saveSet("kova.pwa.activityOrgs",state.activityOrgs);
+  saveSet("kova.pwa.followed",state.followed);
+  syncPushOrganizations();
+}
+function setActivityOrg(code,enabled){
+  if(enabled || code===state.primaryOrg)state.activityOrgs.add(code);
+  else state.activityOrgs.delete(code);
+  state.followed=new Set(state.activityOrgs);
+  saveSet("kova.pwa.activityOrgs",state.activityOrgs);
+  saveSet("kova.pwa.followed",state.followed);
+  syncPushOrganizations();
+}
 function saveFavoriteMeta(){localStorage.setItem("kova.pwa.favoriteMeta",JSON.stringify(state.favoriteMeta))}
 function saveNotes(){localStorage.setItem("kova.pwa.notes",JSON.stringify(state.notes))}
 function saveReminders(){localStorage.setItem("kova.pwa.reminders",JSON.stringify(state.reminders))}
