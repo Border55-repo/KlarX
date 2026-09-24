@@ -68,11 +68,16 @@ function ageMinutes(value){
 function healthState(runtime){
   if(!runtime?.lastRunAt)return {level:"unknown",label:"Ukjent",hint:"Venter på første live Bridge-status."};
   const age=ageMinutes(runtime.lastRunAt);
-  const failures=Number(runtime.consecutiveFailureRuns||0);
-  if(runtime.status==="error"||failures>0||age>90)return {level:"error",label:"Feil",hint:`Siste Bridge-kjøring: ${fmt(runtime.lastRunAt)}`};
-  if(runtime.status==="degraded"||Number(runtime.pendingPushes||0)>0||age>45){
-    return {level:"warning",label:"Advarsel",hint:`Siste Bridge-kjøring: ${fmt(runtime.lastRunAt)}`};
+  const runFailures=Number(runtime.failures||0);
+  const pending=Number(runtime.pendingPushes||0);
+  const runtimeStatus=String(runtime.status||"").toLowerCase();
+  if(runtimeStatus==="error"||runFailures>0){
+    return {level:"error",label:"Feil",hint:`Siste Bridge-kjøring: ${fmt(runtime.lastRunAt)} • ${runFailures} feil`};
   }
+  if(runtimeStatus==="degraded"||pending>0){
+    return {level:"warning",label:"Advarsel",hint:`Siste Bridge-kjøring: ${fmt(runtime.lastRunAt)}${pending>0?` • ${pending} push venter`:""}`};
+  }
+  if(age>90)return {level:"warning",label:"Forsinket",hint:`Siste vellykkede Bridge-kjøring: ${fmt(runtime.lastRunAt)}`};
   return {level:"ok",label:"OK",hint:`Siste vellykkede Bridge-kjøring: ${fmt(runtime.lastRunAt)}`};
 }
 function renderSystemHealth(runtime){
