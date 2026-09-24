@@ -1418,16 +1418,6 @@ if(activityOrgSelect){
   });
 };
 
-const orgSelect = $("orgSelect");
-const primaryOrgSelect = $("primaryOrgSelect");
-const activityOrgSelect = $("activityOrgSelect");
-const otherOrgSelect = $("otherOrgSelect");
-const typeSelect = $("typeSelect");
-const eventsEl = $("events");
-const emptyEl = $("empty");
-const statusText = $("statusText");
-const searchInput = $("searchInput");
-const template = $("eventTemplate");
 
 function isIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent)}
 function isStandalone(){return window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true}
