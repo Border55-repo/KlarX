@@ -1,4 +1,4 @@
-const CACHE="kova-pwa-v27";
+const CACHE="kova-pwa-v28";
 const SHELL=["./","./index.html","./styles.css","./app.js","./manifest.webmanifest","./icon.svg","./firebase-web-config.json","./privacy.html"];
 const HISTORY_DB="kova-pwa-history";
 const HISTORY_STORE="notifications";
