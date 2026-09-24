@@ -33,6 +33,7 @@ const state = {
 
 const $ = id => document.getElementById(id);
 const orgSelect = $("orgSelect");
+const primaryOrgSelect = $("primaryOrgSelect");
 const typeSelect = $("typeSelect");
 const eventsEl = $("events");
 const emptyEl = $("empty");
@@ -185,6 +186,16 @@ function dateInRange(dateIso,days){
   const today=new Date(); today.setHours(0,0,0,0);
   const end=new Date(today); end.setDate(end.getDate()+days);
   return date>=today && date<=end;
+}
+function renderPrimaryOrgSelect(){
+  if(!primaryOrgSelect)return;
+  primaryOrgSelect.innerHTML="";
+  state.orgs.filter(o=>o.category==="hjelpekorps").forEach(o=>{
+    const option=document.createElement("option");
+    option.value=o.code; option.textContent=o.name;
+    option.selected=o.code===state.primaryOrg;
+    primaryOrgSelect.appendChild(option);
+  });
 }
 function orgName(code){return state.orgs.find(o=>o.code===code)?.name || code}
 function updateConnection(){
@@ -1300,3 +1311,11 @@ if("serviceWorker" in navigator){
     statusText.textContent=error.message||"Oppstart feilet";
   }
 })();
+
+if(primaryOrgSelect){
+  primaryOrgSelect.addEventListener("change", async event=>{
+    setPrimaryOrg(event.target.value);
+    if(orgSelect){ orgSelect.value=event.target.value; }
+    if(typeof loadOrg==="function") await loadOrg(event.target.value);
+  });
+}
