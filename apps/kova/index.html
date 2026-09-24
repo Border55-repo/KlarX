@@ -135,22 +135,30 @@
         <span>Finn hjelpekorps</span>
         <input id="orgSearchInput" type="search" placeholder="Søk etter hjelpekorps">
       </label>
-      <div class="org-row">
-        <label>
+      <div class="org-choice-grid">
+        <label class="org-choice">
           <span>Hoved Korps</span>
           <select id="primaryOrgSelect"></select>
-          <small>Velg ett korps som ditt Hoved Korps.</small>
+          <small>Ditt faste hovedkorps.</small>
         </label>
-        <label>
+        <label class="org-choice">
           <span>Korps med Aktivitetstilknytning</span>
-          <select id="activityOrgSelect" multiple size="4"></select>
-          <small>Velg ett eller flere andre korps du har aktivitetstilknytning til.</small>
+          <select id="activityOrgSelect">
+            <option value="">Velg korps</option>
+          </select>
+          <small>Velg et korps og legg det til i listen.</small>
         </label>
-        <label>
+        <label class="org-choice">
           <span>Andre valgte korps</span>
-          <select id="otherOrgSelect" multiple size="4"></select>
-          <small>Korps du vil følge uten at de registreres som Hoved Korps eller aktivitetstilknytning.</small>
+          <select id="otherOrgSelect">
+            <option value="">Velg korps</option>
+          </select>
+          <small>Andre korps du ønsker å følge.</small>
         </label>
+      </div>
+      <div class="org-list-grid">
+        <section class="org-list-box"><strong>Aktivitetstilknytning</strong><div id="activityOrgList"></div></section>
+        <section class="org-list-box"><strong>Andre valgte korps</strong><div id="otherOrgList"></div></section>
       </div>
       <div class="org-row">
         <label>
