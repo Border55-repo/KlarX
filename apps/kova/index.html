@@ -27,6 +27,8 @@
 
   <nav class="quick-nav" aria-label="Hurtignavigasjon">
     <button data-scroll="mainContent">Oversikt</button>
+    <button data-view-jump="primary">Hoved Korps</button>
+    <button data-view-jump="activity">Aktivitetstilknytning</button>
     <button data-view-jump="favorites">Mine vakter</button>
     <button data-scroll="notificationSettings">Varsler</button>
     <button data-scroll="controlsCard">Korps</button>
@@ -170,7 +172,10 @@
       </label>
 
       <div class="segmented" id="viewTabs">
-        <button data-view="all" class="active">Alle</button>
+        <button data-view="primary" class="active">Hoved Korps</button>
+        <button data-view="activity">Aktivitetstilknytning</button>
+        <button data-view="selected">Valgt korps</button>
+        <button data-view="all">Alle</button>
         <button data-view="week">7 dager</button>
         <button data-view="month">30 dager</button>
         <button data-view="favorites">Mine vakter</button>
@@ -195,6 +200,22 @@
       <div id="events" class="event-list"></div>
       <div id="empty" class="empty hidden">Ingen aktiviteter matcher valget.</div>
       <button id="loadMoreBtn" class="small load-more hidden">Vis flere</button>
+    </section>
+
+    <section id="changeLogCard" class="card">
+      <span class="label">Endringslogg</span>
+      <strong>Siste endringer i KOVA Companion</strong>
+      <div id="changeLog">
+        <p><strong>24.09.2026</strong> – Hoved Korps og Korps med Aktivitetstilknytning, forbedret korpsvalg og synk.</p>
+        <p><strong>24.09.2026</strong> – 7 og 14 dagers påminnelser og forbedret pushflyt.</p>
+      </div>
+    </section>
+
+    <section id="feedbackCard" class="card">
+      <span class="label">Tilbakemelding</span>
+      <strong>Hjelp oss å gjøre KOVA Companion bedre</strong>
+      <p class="muted">Send forslag, feil eller andre tilbakemeldinger direkte til prosjektet.</p>
+      <a class="secondary-action" href="https://github.com/Border55-repo/KOVA-Companion-Android/issues/new" target="_blank" rel="noopener">Send tilbakemelding</a>
     </section>
 
     <section class="about card">
