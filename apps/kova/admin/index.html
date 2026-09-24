@@ -95,6 +95,19 @@
         <p id="cacheMessage" class="muted"></p>
       </section>
 
+      <section class="actions card">
+        <div>
+          <span class="label">Publisering</span>
+          <h2>Endringslogg & push</h2>
+          <p class="muted">Publiser en endringslogg til KOVA Companion. Samme publisering kan brukes som grunnlag for push til brukerne når endringen er live.</p>
+          <label>Tittel<input id="changelogTitle" maxlength="80" placeholder="F.eks. Nytt i KOVA Companion"></label>
+          <label>Endringer<textarea id="changelogBody" rows="6" maxlength="2000" placeholder="Beskriv kort hva som er nytt eller rettet."></textarea></label>
+          <label><input id="changelogPush" type="checkbox" checked> Send push om endringen</label>
+          <p id="changelogMessage" class="muted"></p>
+        </div>
+        <button id="publishChangelogBtn" class="primary">Publiser endringslogg</button>
+      </section>
+
       <section class="card">
         <div class="section-head">
           <div>
